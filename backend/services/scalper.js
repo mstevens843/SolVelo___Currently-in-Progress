@@ -16,28 +16,39 @@
  * - Multi-token scalping rotation or prioritization
  */
 
-const { getSwapQuote, executeSwap, loadKeypair } = require("../utils/swap");
+const { getSwapQuote, executeSwap } = require("../utils/swap");
+const { logTrade, isSafeToBuy, getWallet } = require("./utils");
+const { sendTelegramMessage } = require("../telegram/bots");
 require("dotenv").config();
 
-const inputMint = process.env.INPUT_MINT || "So11111111111111111111111111111111111111112"; // SOL
-const outputMint = process.env.OUTPUT_MINT || "Es9vMFrzaCERx6Cw4pTrA6MuoXovbdFxRoCkB9gfup7w"; // USDC
+//  Parse config from env or parent process
+const botConfig = JSON.parse(process.env.BOT_CONFIG || "{}");
 
-const AMOUNT = parseFloat(process.env.TRADE_AMOUNT || "0.01"); // 0.01 SOL
-const SLIPPAGE = parseFloat(process.env.SLIPPAGE || "1.0"); // 1%
-const INTERVAL = parseInt(process.env.TRADE_INTERVAL || "60000"); // 60s
+const inputMint = botConfig.inputMint ?? process.env.INPUT_MINT ?? "So11111111111111111111111111111111111111112"; // SOL
+const outputMint = botConfig.outputMint ?? process.env.OUTPUT_MINT ?? "Es9vMFrzaCERx6Cw4pTrA6MuoXovbdFxRoCkB9gfup7w"; // USDC
+
+const AMOUNT = parseFloat(botConfig.tradeAmount ?? process.env.TRADE_AMOUNT ?? "0.01");
+const SLIPPAGE = parseFloat(botConfig.slippage ?? process.env.SLIPPAGE ?? "1.0");
+const INTERVAL = parseInt(botConfig.interval ?? process.env.TRADE_INTERVAL ?? "60000"); // 60s
 
 async function scalperBot() {
-  const wallet = loadKeypair();
-
   setInterval(async () => {
-    console.log(`\n🔁 Running Scalper @ ${new Date().toLocaleTimeString()}`);
+    console.log(`\n🔁 Scalper Run @ ${new Date().toLocaleTimeString()}`);
     
     try {
+      const wallet = getWallet();
+
+      const isSafe = await isSafeToBuy(outputMint);
+      if (!isSafe) {
+        console.log("🚫 Honeypot check failed. Skipping.");
+        return;
+      }
+
       const quote = await getSwapQuote({
         inputMint,
         outputMint,
         amount: AMOUNT * 1e9,
-        slippage: SLIPPAGE
+        slippage: SLIPPAGE,
       });
 
       if (!quote) {
@@ -49,15 +60,42 @@ async function scalperBot() {
 
       const tx = await executeSwap({ quote, wallet });
 
+      const logData = {
+        timestamp: new Date().toISOString(),
+        strategy: "scalper",
+        inputMint,
+        outputMint,
+        inAmount: quote.inAmount,
+        outAmount: quote.outAmount,
+        priceImpact: quote.priceImpactPct * 100,
+        txHash: tx || null,
+        success: !!tx,
+      };
+
+      logTrade(logData);
+
       if (tx) {
-        console.log(`✅ Swap executed! Tx: https://explorer.solana.com/tx/${tx}?cluster=mainnet-beta`);
+        console.log(`✅ Swap executed! TX: https://explorer.solana.com/tx/${tx}?cluster=mainnet-beta`);
+        await sendTelegramMessage(`✅ *Scalper Swap Complete*\n[TX](https://explorer.solana.com/tx/${tx}?cluster=mainnet-beta)`);
       } else {
         console.log("❌ Swap failed or skipped.");
+        await sendTelegramMessage("❌ *Scalper swap failed or skipped.*");
       }
     } catch (err) {
-      console.error("🚨 Error in scalper loop:", err.message);
+      console.error("🚨 Scalper error:", err.message);
+      await sendTelegramMessage(`⚠️ *Scalper Error:*\n${err.message}`);
     }
   }, INTERVAL);
 }
 
 module.exports = scalperBot;
+
+
+/** 
+ * Additions: 
+ * - Multi-wallet rotation
+ * - Honeypot Protection Check
+ * - Telegram trade alerts 
+ * - Analytics Logging
+ * - Clean error handling + structure
+ */

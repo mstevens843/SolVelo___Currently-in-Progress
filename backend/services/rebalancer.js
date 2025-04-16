@@ -17,24 +17,30 @@
 
 
 const { getTokenBalance, getTokenPrice } = require("../utils/marketData");
-const { getSwapQuote, executeSwap, loadKeypair } = require("../utils/swap");
+const { getSwapQuote, executeSwap } = require("../utils/swap");
+const { logTrade, isSafeToBuy, getWallet } = require("./utils");
+const { sendTelegramMessage } = require("../telegram/bots");
 const { PublicKey } = require("@solana/web3.js");
 require("dotenv").config();
 
-const wallet = loadKeypair();
+// Parse config from env or parent process
+const botConfig = JSON.parse(process.env.BOT_CONFIG || "{}");
 
 const SOL = "So11111111111111111111111111111111111111112";
 const USDC = "Es9vMFrzaCERx6Cw4pTrA6MuoXovbdFxRoCkB9gfup7w";
 
-const TARGET_ALLOCATION = {
+// Allow dynamic target allocation via config
+const TARGET_ALLOCATION = botConfig.targetAllocation ?? {
   [SOL]: 0.6,
   [USDC]: 0.4,
 };
 
-const MIN_REBALANCE_DELTA = parseFloat(process.env.REBALANCE_THRESHOLD || "0.05"); // 5% deviation
+const MIN_REBALANCE_DELTA = parseFloat(botConfig.rebalanceThreshold ?? process.env.REBALANCE_THRESHOLD ?? "0.05");
+const SLIPPAGE = parseFloat(botConfig.slippage ?? process.env.SLIPPAGE ?? "1.0");
 
 async function rebalancer() {
-  console.log("📐 Running portfolio rebalancer...");
+  const wallet = getWallet();
+  console.log("\n📐 Portfolio Rebalance Check");
 
   try {
     const [solBalance, usdcBalance] = await Promise.all([
@@ -56,7 +62,7 @@ async function rebalancer() {
       [USDC]: usdcValue / total,
     };
 
-    console.log(`📊 Current Allocation: SOL=${(currentAllocation[SOL]*100).toFixed(2)}% | USDC=${(currentAllocation[USDC]*100).toFixed(2)}%`);
+    console.log(`📊 Current: SOL=${(currentAllocation[SOL]*100).toFixed(2)}% | USDC=${(currentAllocation[USDC]*100).toFixed(2)}%`);
 
     for (const [token, targetPct] of Object.entries(TARGET_ALLOCATION)) {
       const delta = currentAllocation[token] - targetPct;
@@ -65,34 +71,71 @@ async function rebalancer() {
         const fromMint = delta > 0 ? token : Object.keys(TARGET_ALLOCATION).find(k => k !== token);
         const toMint = delta > 0 ? Object.keys(TARGET_ALLOCATION).find(k => k !== token) : token;
 
-        const excessValue = Math.abs(delta) * total;
-        const amount = excessValue / (fromMint === SOL ? solPrice : usdcPrice);
+        const fromPrice = fromMint === SOL ? solPrice : usdcPrice;
+        const amount = (Math.abs(delta) * total) / fromPrice;
 
-        console.log(`🔁 Rebalancing: Swap ${amount.toFixed(4)} ${fromMint === SOL ? "SOL" : "USDC"} → ${toMint === SOL ? "SOL" : "USDC"}`);
+        console.log(`🔁 Rebalancing ${fromMint} → ${toMint} by ${amount.toFixed(4)}`);
+
+        const isSafe = await isSafeToBuy(toMint);
+        if (!isSafe) {
+          console.log("🚫 Target token failed honeypot check. Skipping.");
+          continue;
+        }
 
         const quote = await getSwapQuote({
           inputMint: fromMint,
           outputMint: toMint,
           amount: amount * (fromMint === SOL ? 1e9 : 1e6),
-          slippage: parseFloat(process.env.SLIPPAGE || "1.0"),
+          slippage: SLIPPAGE,
         });
 
         if (!quote) {
-          console.log("❌ No route available. Skipping.");
-          return;
+          console.warn("❌ No swap route. Skipping.");
+          continue;
         }
 
         const tx = await executeSwap({ quote, wallet });
+
+        const logData = {
+          timestamp: new Date().toISOString(),
+          strategy: "rebalancer",
+          inputMint: fromMint,
+          outputMint: toMint,
+          inAmount: quote.inAmount,
+          outAmount: quote.outAmount,
+          priceImpact: quote.priceImpactPct * 100,
+          txHash: tx || null,
+          success: !!tx,
+        };
+
+        logTrade(logData);
+
         if (tx) {
-          console.log(`✅ Rebalance TX: https://explorer.solana.com/tx/${tx}?cluster=mainnet-beta`);
+          const explorer = `https://explorer.solana.com/tx/${tx}?cluster=mainnet-beta`;
+          console.log(`✅ Rebalance TX: ${explorer}`);
+          await sendTelegramMessage(`📐 *Rebalanced*\n[TX](${explorer})`);
+        } else {
+          console.log("❌ Swap failed.");
+          await sendTelegramMessage(`❌ *Rebalance Failed*`);
         }
       } else {
-        console.log("✅ Allocation within threshold. No action needed.");
+        console.log("✅ Allocation within target range.");
       }
     }
   } catch (err) {
-    console.error("❌ Rebalancer error:", err.message);
+    console.error("❌ Rebalancer Error:", err.message);
+    await sendTelegramMessage(`⚠️ *Rebalance Error:*\n${err.message}`);
   }
 }
 
 module.exports = rebalancer;
+
+
+
+/** Additions
+ * Multi-wallet Support
+ * - Honeypot Guard
+ * - Telegram Alerts
+ * - Trade Logging
+ * - Configurable tokens
+ */

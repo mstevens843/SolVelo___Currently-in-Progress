@@ -16,48 +16,74 @@
  * - Compare real vs simulated execution results. 
  */
 
-onst { getSwapQuote } = require("../utils/swap");
+
+const { getSwapQuote } = require("../utils/swap");
+const { logTrade } = require("./utils");
+const { sendTelegramMessage } = require("../telegram/bots");
 const { loadKeypair } = require("../utils/wallet");
 require("dotenv").config();
 
-const inputMint = process.env.INPUT_MINT || "So11111111111111111111111111111111111111112"; // SOL
-const outputMint = process.env.OUTPUT_MINT || "Es9vMFrzaCERx6Cw4pTrA6MuoXovbdFxRoCkB9gfup7w"; // USDC
+// ✅ Parse config from env or parent process
+const botConfig = JSON.parse(process.env.BOT_CONFIG || "{}");
 
-const AMOUNT = parseFloat(process.env.TRADE_AMOUNT || "0.01"); // 0.01 SOL
-const SLIPPAGE = parseFloat(process.env.SLIPPAGE || "1.0");
-const INTERVAL = parseInt(process.env.TRADE_INTERVAL || "60000");
+const inputMint = botConfig.inputMint ?? process.env.INPUT_MINT ?? "So11111111111111111111111111111111111111112"; // SOL
+const outputMint = botConfig.outputMint ?? process.env.OUTPUT_MINT ?? "Es9vMFrzaCERx6Cw4pTrA6MuoXovbdFxRoCkB9gfup7w"; // USDC
+
+const AMOUNT = parseFloat(botConfig.tradeAmount ?? process.env.TRADE_AMOUNT ?? "0.01");
+const SLIPPAGE = parseFloat(botConfig.slippage ?? process.env.SLIPPAGE ?? "1.0");
+const INTERVAL = parseInt(botConfig.interval ?? process.env.TRADE_INTERVAL ?? "60000"); // 60s
+
 
 async function paperTrader() {
-  const wallet = loadKeypair(); // not used, but simulates actual flow
+  const wallet = loadKeypair(); // Simulates real mode
 
   setInterval(async () => {
-    console.log(`\n📊 Running Paper Trader @ ${new Date().toLocaleTimeString()}`);
+    console.log(`\n📊 Paper Trader Simulation @ ${new Date().toLocaleTimeString()}`);
 
     try {
       const quote = await getSwapQuote({
         inputMint,
         outputMint,
         amount: AMOUNT * 1e9,
-        slippage: SLIPPAGE
+        slippage: SLIPPAGE,
       });
 
       if (!quote) {
-        console.warn("⚠️ No quote available. Skipping this simulated trade.");
+        console.warn("⚠️ No quote available. Skipping simulation.");
         return;
       }
 
       const estimatedOut = quote.outAmount / 1e6;
       const estimatedImpact = quote.priceImpactPct * 100;
 
-      console.log(`🧪 Simulated Trade`);
-      console.log(`🔄 ${AMOUNT} SOL → ${estimatedOut.toFixed(2)} USDC`);
-      console.log(`📉 Estimated Impact: ${estimatedImpact.toFixed(2)}%`);
-      console.log(`📦 Route: ${quote.marketInfos?.length || 0} hops`);
+      const summary = `
+        📊 *Simulated Trade*:
+        ${AMOUNT} SOL → ${estimatedOut.toFixed(3)} USDC
+        📉 Price Impact: ${estimatedImpact.toFixed(2)}%
+        🔁 Hops: ${quote.marketInfos?.length || 0}
+      `;
 
-      // Optional: log to file/db later
+      console.log(summary);
+
+      const logData = {
+        timestamp: new Date().toISOString(),
+        strategy: "paperTrader",
+        inputMint,
+        outputMint,
+        inAmount: AMOUNT * 1e9,
+        outAmount: quote.outAmount,
+        priceImpact: quote.priceImpactPct * 100,
+        txHash: null,
+        success: true,
+        simulated: true,
+      };
+
+      logTrade(logData);
+      await sendTelegramMessage(summary);
 
     } catch (err) {
-      console.error("❌ Paper trade simulation error:", err.message);
+      console.error("❌ Paper trade error:", err.message);
+      await sendTelegramMessage(`⚠️ *Paper Trade Error:*\n${err.message}`);
     }
   }, INTERVAL);
 }

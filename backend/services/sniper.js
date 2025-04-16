@@ -15,100 +15,125 @@
  * - Telegram Alerts and Safety checks. 
  */
 
+/** Sniper Strategy Module
+ * - Detects new token listings from Jupiter token list.
+ * - Attempts to snipe early using available liquidity.
+ * 
+ * Integrated:
+ * - Honeypot detection (price impact, slippage, liquidity)
+ * - Telegram alerts (trade success/failure)
+ * - Analytics logging (saved to trades.json)
+ * - Multi-wallet rotation (spread risk)
+ */
 
-const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
-const { getSwapQuote, executeSwap, loadKeypair } = require("../utils/swap");
+const { getSwapQuote, executeSwap } = require("../utils/swap");
+const { fetchTokenList } = require("../utils/marketData");
+const { logTrade, isSafeToBuy, getWallet, isAboveMinBalance, isWithinDailyLimit } = require("./utils");
+const { sendTelegramMessage } = require("../telegram/bots");
 require("dotenv").config();
 
-const WALLET = loadKeypair();
-const TOKENS_FILE = path.join(__dirname, "../db/known_tokens.json");
+// Parse config passed from parent process.
+const botConfig = JSON.parse(process.env.BOT_CONFIG || "{}");
 
-const TRADE_AMOUNT = parseFloat(process.env.SNIPE_AMOUNT || "0.005"); // in SOL
-const SLIPPAGE = parseFloat(process.env.SLIPPAGE || "1.0"); // %
-const INPUT_MINT = "So11111111111111111111111111111111111111112"; // SOL
 
-/**
- * Load previously known token mints
- */
-function loadKnownTokens() {
-  if (!fs.existsSync(TOKENS_FILE)) return [];
-  return JSON.parse(fs.readFileSync(TOKENS_FILE, "utf-8"));
-}
 
-/**
- * Save updated token list to disk
- */
-function saveKnownTokens(tokens) {
-  fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2));
-}
+const BASE_MINT = process.env.INPUT_MINT || "So11111111111111111111111111111111111111112";
+const SLIPPAGE = parseFloat(botConfig.slippage ?? process.env.SLIPPAGE ?? "1.0");
+const SNIPE_AMOUNT = parseFloat(process.env.SNIPE_AMOUNT || "0.01") * 1e9;
+const SCAN_INTERVAL = parseInt(botConfig.interval ?? process.env.SNIPE_SCAN_INTERVAL ?? "30000");
 
-/**
- * Fetch all token mints currently on Jupiter
- */
-async function fetchTokenList() {
-  const response = await axios.get("https://token.jup.ag/all");
-  return response.data.map((t) => t.address);
-}
+const seen = new Set();
+const minBalance = 0.2; // Min SOL to keep in wallet
+const maxDaily = 5;     // Max daily trading volume (SOL)
+let todayTotal = 0;
+const tradeAmount = SNIPE_AMOUNT / 1e9; // in SOL
 
-/**
- * Attempt to buy a fresh token
- */
-async function snipeToken(mint) {
-  console.log(`🚨 New Token Detected: ${mint} — Sniping now...`);
 
-  const quote = await getSwapQuote({
-    inputMint: INPUT_MINT,
-    outputMint: mint,
-    amount: TRADE_AMOUNT * 1e9,
-    slippage: SLIPPAGE,
-  });
-
-  if (!quote) {
-    console.warn(`❌ No quote available for ${mint}`);
-    return;
-  }
-
-  const tx = await executeSwap({ quote, wallet: WALLET });
-
-  if (tx) {
-    console.log(`✅ Snipe Success! https://explorer.solana.com/tx/${tx}?cluster=mainnet-beta`);
-  } else {
-    console.log(`❌ Snipe Failed for token: ${mint}`);
-  }
-}
-
-/**
- * Main sniper loop
- */
 async function sniperBot() {
-  let knownTokens = loadKnownTokens();
-
   setInterval(async () => {
-    console.log(`\n🔎 Checking Jupiter token list @ ${new Date().toLocaleTimeString()}`);
+    console.log(`\n🎯 Sniper Tick @ ${new Date().toLocaleTimeString()}`);
     try {
-      const allTokens = await fetchTokenList();
+      const mints = await fetchTokenList();
 
-      const newMints = allTokens.filter((mint) => !knownTokens.includes(mint));
+      for (const mint of mints) {
+        if (seen.has(mint)) continue;
 
-      if (newMints.length) {
-        for (const mint of newMints.slice(0, 3)) {
-          await snipeToken(mint); // ⚠️ Rapid fire here
+        seen.add(mint);
+
+        const wallet = getWallet();
+        console.log(`🔍 New token detected: ${mint} — checking safety...`);
+
+        const walletBalance = await getWalletBalance(wallet);
+        if (!isAboveMinBalance(walletBalance, minBalance)) {
+          console.log("🛑 Skipping trade: balance too low.");
+          return;
         }
 
-        // Update local memory + file
-        knownTokens = [...knownTokens, ...newMints];
-        saveKnownTokens(knownTokens);
-      } else {
-        console.log("No new tokens found.");
+        if (!isWithinDailyLimit(tradeAmount, todayTotal, maxDaily)) {
+          console.log("🛑 Skipping trade: exceeds daily limit.");
+          return;
+        }
+
+        const isSafe = await isSafeToBuy(mint);
+        if (!isSafe) {
+          console.log(`🚫 Skipping unsafe token: ${mint}`);
+          continue;
+        }
+
+        console.log(`✅ Safe to buy. Attempting to snipe ${mint}...`);
+        const quote = await getSwapQuote({
+          inputMint: BASE_MINT,
+          outputMint: mint,
+          amount: SNIPE_AMOUNT,
+          slippage: SLIPPAGE,
+        });
+
+        if (!quote) {
+          console.warn("⚠️ No quote available. Skipping.");
+          continue;
+        }
+
+        const tx = await executeSwap({ quote, wallet });
+
+        const logData = {
+          timestamp: new Date().toISOString(),
+          strategy: "sniper",
+          inputMint: BASE_MINT,
+          outputMint: mint,
+          inAmount: SNIPE_AMOUNT,
+          outAmount: quote.outAmount,
+          priceImpact: quote.priceImpactPct * 100,
+          txHash: tx || null,
+          success: !!tx,
+        };
+
+        logTrade(logData);
+
+        if (tx) {
+          console.log(`🚀 Sniped ${mint}! TX: https://explorer.solana.com/tx/${tx}?cluster=mainnet-beta`);
+          await sendTelegramMessage(`🚀 *Sniped Token*\nMint: \`${mint}\`\n[View TX](https://explorer.solana.com/tx/${tx}?cluster=mainnet-beta)`);
+        } else {
+          console.log(`❌ Failed to snipe ${mint}.`);
+          await sendTelegramMessage(`❌ *Snipe Failed*\nMint: \`${mint}\``);
+        }
+
+        break; // one snipe per tick
       }
     } catch (err) {
-      console.error("❌ Sniper loop failed:", err.message);
+      console.error("❌ Sniper error:", err.message);
+      await sendTelegramMessage(`⚠️ *Sniper Error:*\n${err.message}`);
     }
-  }, parseInt(process.env.SNIPE_INTERVAL || "45000")); // default every 45s
+  }, SCAN_INTERVAL);
 }
 
 module.exports = sniperBot;
 
 
+/**
+ * Additions: 
+ * - HoneyPot protection
+ * - Analytics Logging
+ * - Multi-wallet Rotation
+ * - Telegram alerts
+ * - Clean Structure + safe error handling
+ */
