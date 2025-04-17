@@ -1,15 +1,29 @@
+/** WalletManager.js - Wallet utility for Solana Trading bot platform.
+ * 
+ * Features: 
+ * - Load a single keypair or multiple keypairs from ./wallet
+ * - Rotate wallets fro session-based trade distribution. 
+ * - Fetch wallet balances. 
+ * - Stubbed support for Phantom, Backpack, Solflare (future)
+ * 
+ * - Used by strategy files that require wallet access and by rotation-based bot logic. 
+ */
+
+
 const { Connection, Keypair, PublicKey } = require("@solana/web3.js");
 const fs = require("fs");
 const path = require("path");
 
 const connection = new Connection(process.env.SOLANA_RPC_URL);
 
+// internal state
 let wallets = [];
 let currentIndex = 0;
 let currentWallet = null;
 
 /**
  * ✅ Load multiple keypair wallets from disk for rotation mode
+ * ✅ Used for rotating wallet strategies. 
  */
 function loadAllWallets(folder = "./wallets") {
   const files = fs.readdirSync(folder);
@@ -24,6 +38,7 @@ function loadAllWallets(folder = "./wallets") {
 
 /**
  * ✅ Rotate to the next wallet (round-robin)
+ * ✅ Useful for distributing trades across multiple wallets. 
  */
 function rotateWallet() {
   if (wallets.length === 0) throw new Error("No wallets loaded to rotate.");
@@ -34,7 +49,7 @@ function rotateWallet() {
 }
 
 /**
- * ✅ Return current wallet (rotation or provider-based)
+ * ✅ Return current active wallet.
  */
 function getCurrentWallet() {
   if (!currentWallet) throw new Error("No wallet loaded yet.");
@@ -42,7 +57,7 @@ function getCurrentWallet() {
 }
 
 /**
- * ✅ Return wallet balance in SOL
+ * ✅ Returns the current wallet's balance in SOL. 
  */
 async function getWalletBalance(wallet = currentWallet) {
   const pubkey = wallet.publicKey || new PublicKey(wallet);
@@ -51,7 +66,8 @@ async function getWalletBalance(wallet = currentWallet) {
 }
 
 /**
- * ✅ Load a specific wallet provider (Phantom, Backpack, etc)
+ * ✅ Load walelt from environment or fallback to default keypair. 
+ * Supported: keypair (default), phantom, backback, solflare
  */
 function loadWallet(provider = process.env.WALLET_PROVIDER || "keypair") {
   switch (provider) {
@@ -77,7 +93,8 @@ function loadKeypairWallet() {
 }
 
 /**
- * 🚧 Stubbed provider-based wallet loaders (implement later)
+ * 🚧 Stubbed wallet rpovider integrations
+ * - These can be implemented in the future usigng wallett adapters or browser extensions. 
  */
 function loadPhantomWallet() {
   throw new Error("Phantom wallet support not implemented yet");

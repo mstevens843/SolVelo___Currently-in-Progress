@@ -1,0 +1,22 @@
+{
+    "inputMint": "So11111111111111111111111111111111111111112",
+    "monitoredTokens": [
+      "BREAK123TOKENMINT",
+      "MOMENTUM999TOKENMINT"
+    ],
+    "slippage": 0.008,
+    "positionSize": 0.015,
+    "interval": 15000,
+    "breakoutThreshold": 0.18,
+    "volumeSpikeMultiplier": 2.5,
+    "confirmationCandles": 2,
+    "minLiquidity": 12000,
+    "takeProfit": 0.25,
+    "stopLoss": 0.1,
+    "walletIndex": 0,
+    "maxDailyVolume": 4,
+    "haltOnFailures": 4,
+    "dryRun": false,
+    "cooldown": 60000
+  }
+  

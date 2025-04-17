@@ -1,0 +1,17 @@
+{
+    "tokens": [
+      "So11111111111111111111111111111111111111112",
+      "Es9vMFrzaCERx6Cw4pTrA6MuoXovbdFxRoCkB9gfup7w"
+    ],
+    "threshold": 0.06,
+    "tradeAmount": 0.01,
+    "slippage": 0.005,
+    "interval": 600000,
+    "inputMint": "So11111111111111111111111111111111111111112",
+    "takeProfit": 0.15,
+    "stopLoss": 0.05,
+    "maxOpenTrades": 3,
+    "trendWindow": 6,
+    "confirmationCandles": 3
+  }
+  

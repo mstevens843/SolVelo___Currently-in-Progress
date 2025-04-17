@@ -2,6 +2,12 @@
  * - Checks a token before buying it to avoid scams or illiquid pools. 
  * - Simulates a swap using Jupiter and enforeces basic safety rules. 
  * 
+ * Used To Simulate a small swap to detect: 
+ * - Abnormally high price impact (low liquidity or scam token) 
+ * - Insufficient output received (malformed or malicious)
+ * 
+ * - If a tokden fails this checked, it is skipped during execution. 
+ * 
  * Prevents: 
  * - Zero Liquidity
  * - High price impact (slippage traps)
@@ -15,11 +21,20 @@
 const { getSwapQuote } = require("../../utils/swap");
 require("dotenv").config();
 
+// Constants pulled from .env or fallback defaults. 
 const BASE_MINT = process.env.INPUT_MINT || "So11111111111111111111111111111111111111112";
 const SLIPPAGE = parseFloat(process.env.SLIPPAGE || "1.0");
 const SIMULATE_AMOUNT = parseFloat(process.env.HONEYPOT_CHECK_AMOUNT || "0.005") * 1e9;
 const MAX_IMPACT = parseFloat(process.env.HONEYPOT_MAX_IMPACT || "5.0"); // percent
 const MIN_EXPECTED_OUTPUT = parseFloat(process.env.HONEYPOT_MIN_RECEIVED || "5"); // 5 USDC or whatever
+
+
+/** 
+ * Performs a simulated swap to test whether a token is safe to buy. 
+ * @param {string} outputMint - token mint address you're buying. 
+ * @returns {boolean} - true if the token passes impact and output threholds. 
+ */
+
 
 async function isSafeToBuy(outputMint) { // honeypotguard = basically = issafetobuy
   try {

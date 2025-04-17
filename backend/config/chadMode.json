@@ -1,0 +1,24 @@
+{
+    "inputMint": "So11111111111111111111111111111111111111112",
+    "monitoredTokens": [
+      "CHADTOKEN111111111111111111111111111111111",
+      "GIGACHADTOKEN22222222222222222222222222222"
+    ],
+    "slippage": 0.015,
+    "positionSize": 0.03,
+    "interval": 8000,
+    "entryThreshold": 0.01,
+    "volumeThreshold": 8000,
+    "takeProfit": 0.5,
+    "stopLoss": 0.2,
+    "walletIndex": 0,
+    "dryRun": false,
+    "maxDailyVolume": 10,
+    "haltOnFailures": 3,
+    "momentumWindow": 1,
+    "maxOpenTrades": 5,
+    "allowReentry": true,
+    "useRandomDelay": true,
+    "randomDelayRange": [2000, 5000]
+  }
+  

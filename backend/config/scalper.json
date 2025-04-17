@@ -1,0 +1,23 @@
+{
+    "inputMint": "So11111111111111111111111111111111111111112",
+    "monitoredTokens": [
+      "WIFmint123",
+      "MEWmint456",
+      "BONKmint789"
+    ],
+    "slippage": 0.002,
+    "scalpAmount": 0.005,
+    "interval": 10000,
+    "takeProfit": 0.01,
+    "stopLoss": 0.005,
+    "entryThreshold": 0.005,
+    "volumeThreshold": 15000,
+    "walletIndex": 0,
+    "maxDailyVolume": 3,
+    "haltOnFailures": 5,
+    "dryRun": false,
+    "maxOpenTrades": 2,
+    "priceWindow": 1,
+    "maxTradeDuration": 60000
+  }
+  

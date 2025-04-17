@@ -1,0 +1,23 @@
+{
+    "inputMint": "So11111111111111111111111111111111111111112",
+    "watchedTokens": [
+      "DIPTOKEN123456789000000000000000000000000",
+      "BUYTHEDIPTOKEN999999999999999999999999999"
+    ],
+    "dipThreshold": -0.20,
+    "recoveryWindow": 5,
+    "confirmationCandles": 2,
+    "volumeThreshold": 10000,
+    "slippage": 0.004,
+    "positionSize": 0.01,
+    "interval": 20000,
+    "takeProfit": 0.15,
+    "stopLoss": 0.07,
+    "walletIndex": 0,
+    "maxDailyVolume": 3,
+    "haltOnFailures": 3,
+    "dryRun": false,
+    "cooldown": 60000
+  }
+  
+  

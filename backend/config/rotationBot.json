@@ -1,0 +1,34 @@
+{
+    "inputMint": "So11111111111111111111111111111111111111112",
+    "sectors": {
+      "memes": [
+        "CHADTOKEN123456789",
+        "WIFTOKEN987654321"
+      ],
+      "defi": [
+        "JUPTOKEN111222333",
+        "LPTOKEN999888777"
+      ],
+      "nfts": [
+        "SMBLTOKEN123123123",
+        "SCRIBETOKEN987987987"
+      ]
+    },
+    "rotationInterval": 3600000,
+    "scanInterval": 10000,
+    "positionSize": 0.015,
+    "entryThreshold": 0.03,
+    "volumeThreshold": 15000,
+    "minMomentum": 0.02,
+    "maxDrawdown": 0.1,
+    "slippage": 0.005,
+    "takeProfit": 0.25,
+    "stopLoss": 0.1,
+    "walletIndex": 0,
+    "maxOpenTrades": 2,
+    "cooldown": 60000,
+    "maxDailyVolume": 5,
+    "dryRun": false,
+    "haltOnFailures": 4
+  }
+  

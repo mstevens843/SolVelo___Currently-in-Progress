@@ -1,7 +1,7 @@
 // backend/services/utils/index.js
 
 module.exports = {
-    logTrade: require("./analyticsLogger").logTrade,
+    logTrade: require("./logTrade").logTrade,
     isSafeToBuy: require("./honeypotGuard").isSafeToBuy,
     getWallet: require("./multiWalletExecutor").getWallet,
     ...require("./riskManager"),
@@ -12,4 +12,5 @@ module.exports = {
     ...require("./timeUtils"),
     ...require("./executionLogger"),
     ...require('./getWalletBalance'),
+    ...require('./tradeSummary'),
   };

@@ -1,0 +1,18 @@
+{
+    "walletIndex": 0,
+    "inputMint": "So11111111111111111111111111111111111111112",
+    "targetAllocations": {
+      "So11111111111111111111111111111111111111112": 0.40,
+      "Es9vMFrzaCERx6Cw4pTrA6MuoXovbdFxRoCkB9gfup7w": 0.30,  
+      "JUPTOKEN123456789012345678901234567890123": 0.15,     
+      "WIFTOKEN123456789012345678901234567890123": 0.15      
+    },
+    "rebalanceThreshold": 0.05,
+    "scanInterval": 3600000,
+    "slippage": 0.005,
+    "minTradeSize": 0.005,
+    "dryRun": false,
+    "maxTradesPerCycle": 4,
+    "haltOnFailures": 3
+  }
+  

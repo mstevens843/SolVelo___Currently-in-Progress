@@ -1,0 +1,21 @@
+{
+    "inputMint": "So11111111111111111111111111111111111111112",
+    "slippage": 0.006,
+    "snipeAmount": 0.01,
+    "monitoredTokens": [
+      "NEWLAUNCHTOKEN1111111111111111111111111111",
+      "HYPETOKEN99999999999999999999999999999999"
+    ],
+    "delayMs": 15000,
+    "scanInterval": 10000,
+    "takeProfit": 0.2,
+    "stopLoss": 0.1,
+    "entryThreshold": 0.02,
+    "volumeThreshold": 10000,
+    "walletIndex": 0,
+    "dryRun": false,
+    "maxDailyVolume": 4,
+    "haltOnFailures": 4,
+    "cooldown": 60000
+  }
+  

@@ -1,4 +1,13 @@
-// backend/utils/swap.js
+/** Swap.js - Core Swap Execution + quote retrieval utility
+ * 
+ * Features: 
+ * - Fetch swap quote from Jupiter Aggregator
+ * - Execute swap via Jupiter's smart routing API
+ * - Supports legacy and versioned Solana transactions
+ * - Used by all trading strategies to perform real token swaps
+ * - Loads wallet from env or strategy context 
+ */
+
 const axios = require("axios");
 const { Connection, Keypair, PublicKey, Transaction, VersionedTransaction } = require("@solana/web3.js");
 const bs58 = require("bs58");
@@ -11,7 +20,8 @@ const JUPITER_QUOTE_URL = "https://api.jup.ag/swap/v1/quote";
 const JUPITER_SWAP_URL = "https://api.jup.ag/swap/v1/swap";
 
 /**
- * Load keypair from PRIVATE_KEY (.env)
+ * Load keypair from PRIVATE_KEY ub .env
+ * This is the primary trading wallet used for all transacitons; 
  */
 function loadKeypair() {
   if (!process.env.PRIVATE_KEY) throw new Error("Missing PRIVATE_KEY in .env");
@@ -20,7 +30,12 @@ function loadKeypair() {
 }
 
 /**
- * Fetch a swap quote from Jupiter
+ * GET swap quote using a Juptier API 
+ * Params: 
+ * - inputMint: from token mint address
+ * - outputMint: to a token mint address
+ * - amount: input amount in atomic (lamports, u64)
+ * - slippage: allowed slippage % (e.g. 1.0 for 1%) 
  */
 async function getSwapQuote({ inputMint, outputMint, amount, slippage }) {
   try {
@@ -41,7 +56,8 @@ async function getSwapQuote({ inputMint, outputMint, amount, slippage }) {
 }
 
 /**
- * Execute a swap based on a Jupiter quote
+ * Execute a swap based on the provided Jupiter quote
+ * - Signs and sends transactions to Solana via Jupiter's API. 
  */
 async function executeSwap({ quote, wallet }) {
   try {
@@ -87,7 +103,8 @@ async function executeSwap({ quote, wallet }) {
 }
 
 /**
- * Entry point if run directly
+ * Entry point if run directly. 
+ * If run directly, fetch and execute a test swap for manual debugging. 
  */
 if (require.main === module) {
   (async () => {

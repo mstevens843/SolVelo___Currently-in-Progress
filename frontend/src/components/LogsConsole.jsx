@@ -1,12 +1,30 @@
+/** LogsConsole - Real-time WebSocket for Solana trading bot dashboard
+ * 
+ * Features:
+ * - Connects to WebSocket server for live logging. (`ws://localhost:5001`)
+ * - Displays the latest 100 log entries in a scrollble UI 
+ * - Automatically masks sensitive data like wallet addresses and tx hashes. 
+ * - Clean up WebSocket connection on unmount. 
+ * 
+ * - Used in dashboard to monitor backend activity (trades, alerts, errors)
+ */
+
 import React, { useState, useEffect } from "react";
 import "./LogsConsole.css";
 
+
+/**
+ * LogsConsole displays live logs streamed via WebSocket. 
+ * It includes a sanitizer to prevent leaking sensitive keys or hashes. 
+ */
 const LogsConsole = () => {
   const [logs, setLogs] = useState([]);
 
   useEffect(() => {
+
     const ws = new WebSocket("ws://localhost:5001");
 
+    // On new message, add to logs and keep only the last 100. 
     ws.onmessage = (msg) => {
       setLogs((prev) => [...prev.slice(-100), msg.data]); // keep last 100 logs
     };

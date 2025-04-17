@@ -1,0 +1,19 @@
+{
+    "strategy": "sniper",
+    "inputMint": "So11111111111111111111111111111111111111112",
+    "monitoredTokens": [
+      "CHADTOKEN123",
+      "WIFTOKEN456"
+    ],
+    "snipeAmount": 0.01,
+    "slippage": 0.005,
+    "interval": 30000,
+    "entryThreshold": 0.02,
+    "volumeThreshold": 8000,
+    "takeProfit": 0.2,
+    "stopLoss": 0.1,
+    "cooldown": 60000,
+    "maxDailyTrades": 10,
+    "logToFile": true
+  }
+  

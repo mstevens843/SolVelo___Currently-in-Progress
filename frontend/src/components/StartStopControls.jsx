@@ -1,7 +1,19 @@
+/** StartStopControls - UI COntrols to start and stop bot execution. 
+ * 
+ * Features: 
+ * - "Start" button that triggers strategy execution if a mode is selected. 
+ * - "Stop" button to halt an actively running bot. 
+ * - Buttons fidanle based on app state (running, loading, no strategy selected)
+ * - Displays dynamic text/icons for loading feedback (Starting / Stopping) 
+ * 
+ * - Used in dashboard to control lifecycle of trading pot per user action. 
+ */
+
+
 import React from "react";
 
-const StartStopControls = ({ onStart, onStop, running, selected, loading }) => {
-  return (
+const StartStopControls = ({ onStart, onStop, running, selected, loading, disabled }) => {
+    return (
     <div className="start-stop-controls">
       <button
         onClick={onStart}

@@ -111,3 +111,49 @@
     color: white;
   }
   
+
+
+  .chart-toggle {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+  .chart-toggle select {
+    margin-left: 0.5rem;
+    padding: 4px;
+    font-weight: bold;
+  }
+
+
+  .csv-export {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .csv-export button {
+    padding: 8px 16px;
+    background: #4ade80;
+    border: none;
+    border-radius: 6px;
+    color: #111;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  
+  .csv-export button:hover {
+    background: #22c55e;
+  }
+  
+
+  .reset-logs button {
+    margin-top: 0.5rem;
+    padding: 8px 16px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .reset-logs button:hover {
+    background: #dc2626;
+  }
