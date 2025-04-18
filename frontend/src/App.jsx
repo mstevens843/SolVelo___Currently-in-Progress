@@ -18,17 +18,18 @@ import StartStopControls from "./components/StartStopControls";
 import ConfigPanel from "./components/ConfigPanel";
 import TradeChart from "./components/TradeChart";
 import PortfolioChart from "./components/PortfolioChart";
+import HistoryPanel from "./components/HistoryPanel";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./styles/dashboard.css";
 
-const API_BASE = "http://localhost:5001/api/mode";
 
 const App = () => {
   const [selectedMode, setSelectedMode] = useState(
     () => localStorage.getItem("selectedMode") || ""
   );
   const [running, setRunning] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [autoRestart, setAutoRestart] = useState(
     () => JSON.parse(localStorage.getItem("autoRestart")) || false
   );
@@ -76,8 +77,8 @@ const App = () => {
   
 // Fetch trade data on initial load
 useEffect(() => {
-  fetch("http://localhost:5001/api/trades")
-    .then((res) => res.json())
+  fetch(`${import.meta.env.VITE_API_BASE_URL}/api/trades`)
+  .then((res) => res.json())
     .then((data) => {
       setTrades(data);
       fetchRecap(); // update recap after trades load. 
@@ -91,8 +92,8 @@ useEffect(() => {
 
 // Fetch recap separately on mount 
 useEffect(() => {
-  fetch("http://localhost:5001/api/trades/recap")
-    .then(res => res.json())
+  fetch(`${import.meta.env.VITE_API_BASE_URL}/api/trades/recap`)
+  .then(res => res.json())
     .then(data => setRecap(data))
     .catch(err => {
       console.error("❌ Recap fetch error:", err);
@@ -107,8 +108,8 @@ useEffect(() => {
 
   // Get bot status (running or not)
   useEffect(() => {
-    fetch(`${API_BASE}/status`)
-      .then((res) => res.json())
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/mode/status`)
+    .then((res) => res.json())
       .then((data) => setRunning(data.running))
       .catch((err) => {
         console.error("Error fetching status:", err);
@@ -137,7 +138,7 @@ useEffect(() => {
   const startMode = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/start`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/mode/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" ,
         "x-auto-restart": JSON.stringify(autoRestart),
@@ -165,7 +166,7 @@ useEffect(() => {
   const stopMode = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/stop`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/mode/stop`, {
         method: "POST",
       });
 
@@ -187,7 +188,7 @@ useEffect(() => {
 
   // fetchRecap - re-fetch daily summary data
   const fetchRecap = () => {
-    fetch("http://localhost:5001/api/trades/recap")
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/trades/recap`)
       .then(res => res.json())
       .then(setRecap)
       .catch(err => {
@@ -229,7 +230,7 @@ useEffect(() => {
         loading={loading}
         onStart={startMode}
         onStop={stopMode}
-        disabled={!confirmed}
+        // disabled={!confirmed}
       />
 
       {/* Auto-Restart Toggle */}
@@ -322,7 +323,7 @@ useEffect(() => {
             const confirmReset = window.confirm("🧹 Are you sure you want to clear all trade logs?");
             if (!confirmReset) return;
 
-            fetch("http://localhost:5001/api/trades/reset", {
+            fetch(`${import.meta.env.VITE_API_BASE_URL}/api/trades/reset`, {
               method: "POST",
             })
               .then((res) => res.json())
@@ -347,6 +348,9 @@ useEffect(() => {
       ) : (
         <PortfolioChart />
       )}
+
+      {/* 📚 Full Trade History Table */}
+      <HistoryPanel />
 
       <ToastContainer position="bottom-right" theme="dark" autoClose={3000} />
     </div>

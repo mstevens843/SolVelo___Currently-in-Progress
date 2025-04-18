@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import "./ConfigPanel.css";
+import "@/styles/components/ConfigPanel.css";
 
 
 /** ConfigPanel displays a form that lets the user configure key trading bot settings.

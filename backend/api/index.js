@@ -1,7 +1,7 @@
 const express = require("express");
 const modeRouter = require("./modes");
 const tradeRouter = require("./trades");
-const portfolioSummary = require("./portfolio-summary")
+const portfolioSummary = require("./portfolio-summary.js")
 
 const router = express.Router();
 

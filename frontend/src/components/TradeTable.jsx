@@ -15,7 +15,7 @@
  */
 
 import React from "react";
-import "./TradeTable.css";
+import "@/styles/components/TradeTable.css";
 
 
 /** 

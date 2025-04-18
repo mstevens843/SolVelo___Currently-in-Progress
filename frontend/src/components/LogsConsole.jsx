@@ -10,8 +10,8 @@
  */
 
 import React, { useState, useEffect } from "react";
-import "./LogsConsole.css";
-
+import { toast } from "react-toastify";
+import "@/styles/components/LogsConsole.css";
 
 /**
  * LogsConsole displays live logs streamed via WebSocket. 
@@ -21,12 +21,11 @@ const LogsConsole = () => {
   const [logs, setLogs] = useState([]);
 
   useEffect(() => {
-
     const ws = new WebSocket("ws://localhost:5001");
 
     // On new message, add to logs and keep only the last 100. 
     ws.onmessage = (msg) => {
-      setLogs((prev) => [...prev.slice(-100), msg.data]); // keep last 100 logs
+      setLogs((prev) => [...prev.slice(-100), msg.data]);
     };
 
     ws.onerror = (err) => console.error("WebSocket error:", err);
@@ -35,27 +34,17 @@ const LogsConsole = () => {
     return () => ws.close();
   }, []);
 
-
-
-
   /** 
-   * Mask Long wallet-like strings: 9sv...aLNh
-   * Masked tx hashes: f6d7a2..33c781
-   * You're now safe from leaking full wallet or tx data in your frontned logs. 
-
+   * Mask wallet-like addresses and full tx hashes
    */
   const sanitizeLog = (log) => {
     const addressPattern = /([1-9A-HJ-NP-Za-km-z]{32,44})/g;
     const txPattern = /\b([a-f0-9]{64})\b/gi;
 
     let sanitized = log;
-
-    // Mask wallet addresses
     sanitized = sanitized.replace(addressPattern, (match) =>
       match.length > 20 ? `${match.slice(0, 4)}…${match.slice(-4)}` : match
     );
-
-    // Mask tx hashes
     sanitized = sanitized.replace(txPattern, (match) =>
       `${match.slice(0, 6)}…${match.slice(-6)}`
     );
@@ -63,9 +52,33 @@ const LogsConsole = () => {
     return sanitized;
   };
 
+  /** 🔁 Resets backend logs and clears console */
+  const handleClearLogs = async () => {
+    const confirm = window.confirm("🧹 Are you sure you want to clear all backend logs?");
+    if (!confirm) return;
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/trades/reset`, {
+        method: "POST",
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("🧹 Logs cleared successfully.");
+        setLogs([]);
+      } else {
+        toast.error(`❌ ${data.error || "Failed to clear logs."}`);
+      }
+    } catch (err) {
+      console.error("❌ Log reset failed:", err);
+      toast.error("❌ Could not clear logs.");
+    }
+  };
+
   return (
     <div className="logs-console">
       <h3>📜 Live Logs</h3>
+
       <div className="logs-output">
         {logs.map((line, i) => (
           <div key={i} className="log-line">
@@ -73,8 +86,13 @@ const LogsConsole = () => {
           </div>
         ))}
       </div>
+
+      <div className="clear-logs-button">
+        <button onClick={handleClearLogs}>🧼 Clear Logs</button>
+      </div>
     </div>
   );
 };
 
 export default LogsConsole;
+

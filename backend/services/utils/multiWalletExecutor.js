@@ -24,7 +24,7 @@ const bs58 = require("bs58");
 const { Keypair } = require("@solana/web3.js");
 
 // Wallet folder path
-const WALLET_DIR = path.join(__dirname, "../wallets");
+const WALLET_DIR = path.join(__dirname, "../../wallets");
 // Rotation Mode
 const ROTATION_MODE = process.env.WALLET_ROTATION_MODE || "round"; // or "random"
 

@@ -11,8 +11,9 @@
 
 
 import React from "react";
+import "@/styles/components/StartStopControls.css"; 
 
-const StartStopControls = ({ onStart, onStop, running, selected, loading, disabled }) => {
+const StartStopControls = ({ onStart, onStop, running, selected, loading, disabled, confirmed }) => {
     return (
     <div className="start-stop-controls">
       <button

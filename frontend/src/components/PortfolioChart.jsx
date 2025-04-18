@@ -19,9 +19,7 @@ import {
   CartesianGrid,
   ResponsiveContainer
 } from "recharts";
-
-const API_URL = "http://localhost:5001/api/trades"; // or expose via dedicated endpoint later
-
+import "@/styles/components/PortfolioChart.css";
 
 /** Sends responsive line chart of portfolio equity over time
  * Pulls data from the backend and displays Recharts. 
@@ -31,7 +29,7 @@ const PortfolioChart = () => {
 
   useEffect(() => {
     // fetch equityt curve on component mount
-    fetch("http://localhost:5001/api/portfolio-summary")
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/portfolio-summary`)
       .then(res => res.json())
       .then(data => {
         setEquity(data.equityCurve || []);

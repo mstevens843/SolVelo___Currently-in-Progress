@@ -10,7 +10,7 @@
  */
 
 import React from "react";
-import "./ModeSelector.css";
+import "@/styles/components/ModeSelector.css";
 
 // List of available strategy modes
 const modes = [
