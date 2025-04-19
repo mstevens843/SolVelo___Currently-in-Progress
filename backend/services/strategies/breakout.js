@@ -30,7 +30,7 @@
 const { Connection, PublicKey } = require('@solana/web3.js');
 const { getTokenPriceChange, getTokenVolume } = require('../../utils/marketData.js');
 const { getSwapQuote, executeSwap } = require('../../utils/swap.js');
-const { logTrade, isSafeToBuy, getWallet, isAboveMinBalance, isWithinDailyLimit } = require("../utils/index.js");
+const { logTrade, isSafeToBuy, getWallet, isAboveMinBalance, isWithinDailyLimit, getWalletBalance, loadWalletsFromArray } = require("../utils/index.js");
 const { sendTelegramMessage } = require('../../telegram/bots.js');
 require('dotenv').config();
 
@@ -96,7 +96,22 @@ async function monitorBreakouts() {
           continue;
         }
 
-        const wallet = getWallet();
+        
+        // Load wallets sent from frontend config (as stringified secret keys)
+        if (Array.isArray(botConfig.wallets)) {
+              loadWalletsFromArray(botConfig.wallets);
+            }
+        
+
+        const wallet = getCurrentWallet(); // ✅ now safe to get active wallet
+
+        const solBalance = await getWalletBalance(wallet);
+        const MIN_SOL = 0.01;
+
+        if (solBalance < MIN_SOL) {
+          console.warn(`⚠️ Not enough SOL for transaction fees (${solBalance} SOL). Skipping rebalance.`);
+          return;
+        }
 
         if (!isWithinDailyLimit(POSITION_SIZE / 1e9, todayTotal, MAX_DAILY_VOLUME)) {
           console.log("⚠️ Max daily volume reached. Skipping.");

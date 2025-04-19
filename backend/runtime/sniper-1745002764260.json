@@ -1,0 +1,12 @@
+{
+  "slippage": 0.5,
+  "interval": 3000,
+  "maxTrades": "",
+  "inputMint": "Bmk2B3y6qwuMammPHzmrZFDYKvQ6yoP4hVsZu7NZcYpo",
+  "monitoredTokens": [
+    "So11111111111111111111111111111111111111112"
+  ],
+  "wallets": [
+    "Bmk2B3y6qwuMammPHzmrZFDYKvQ6yoP4hVsZu7NZcYpo"
+  ]
+}

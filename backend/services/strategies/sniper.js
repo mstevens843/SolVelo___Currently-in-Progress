@@ -25,114 +25,145 @@
  * - Analytics logging (saved to trades.json)
  * - Multi-wallet rotation (spread risk)
  */
-
+const fs = require("fs");
+const path = require("path");
 const { getSwapQuote, executeSwap } = require("../../utils/swap");
-const { fetchTokenList } = require("../../utils/marketData");
-const { logTrade, isSafeToBuy, getWallet, isAboveMinBalance, isWithinDailyLimit } = require("../utils");
+const { fetchTokenList, getTokenPriceChange, getTokenVolume } = require("../../utils/marketData");
+const {
+  logTrade,
+  isSafeToBuy,
+  getWalletBalance,
+  isAboveMinBalance,
+  isWithinDailyLimit,
+  sendTelegramMessage,
+  loadWalletsFromArray,
+  getCurrentWallet,
+} = require("../utils");
 
-const { sendTelegramMessage } = require("../../telegram/bots");
-require("dotenv").config();
+if (require.main === module) {
+  const configPath = process.argv[2];
 
-// Parse config passed from parent process.
-const botConfig = JSON.parse(process.env.BOT_CONFIG || "{}");
+  if (!configPath || !fs.existsSync(configPath)) {
+    console.error("❌ Missing or invalid config path:", configPath);
+    process.exit(1);
+  }
 
+  const botConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+  console.log("✅ Loaded config:", botConfig);
 
+  const BASE_MINT = botConfig.inputMint || "So11111111111111111111111111111111111111112";
+  const MONITORED = botConfig.monitoredTokens || [];
+  const SLIPPAGE = parseFloat(botConfig.slippage ?? 1.0);
+  const SNIPE_AMOUNT = parseFloat(botConfig.snipeAmount ?? 0.01) * 1e9;
+  const SCAN_INTERVAL = parseInt(botConfig.interval ?? 30000);
+  const ENTRY_THRESHOLD = parseFloat(botConfig.entryThreshold ?? 0.02);
+  const VOLUME_THRESHOLD = parseFloat(botConfig.volumeThreshold ?? 0);
+  const TAKE_PROFIT = parseFloat(botConfig.takeProfit ?? 0);
+  const STOP_LOSS = parseFloat(botConfig.stopLoss ?? 0);
+  const MAX_DAILY = parseFloat(botConfig.maxDailyVolume ?? 5);
+  const HALT_ON_FAILURES = parseInt(botConfig.haltOnFailures ?? 3);
+  const DRY_RUN = botConfig.dryRun === true;
+  const MIN_BALANCE = 0.2;
 
-// Config-driven values
-const BASE_MINT = botConfig.inputMint || "So11111111111111111111111111111111111111112";
-const MONITORED = botConfig.monitoredTokens || [];
-const SLIPPAGE = parseFloat(botConfig.slippage ?? 1.0);
-const SNIPE_AMOUNT = parseFloat(botConfig.snipeAmount ?? 0.01) * 1e9;
-const SCAN_INTERVAL = parseInt(botConfig.interval ?? 30000);
-const ENTRY_THRESHOLD = parseFloat(botConfig.entryThreshold ?? 0.02);
-const VOLUME_THRESHOLD = parseFloat(botConfig.volumeThreshold ?? 0);
-const TAKE_PROFIT = parseFloat(botConfig.takeProfit ?? 0);
-const STOP_LOSS = parseFloat(botConfig.stopLoss ?? 0);
-const MAX_DAILY = parseFloat(botConfig.maxDailyVolume ?? 5);
-const HALT_ON_FAILURES = parseInt(botConfig.haltOnFailures ?? 3);
-const DRY_RUN = botConfig.dryRun === true;
-const MIN_BALANCE = 0.2; // hardcoded for now
+  const { loadWalletsFromLabels, getCurrentWallet } = require("../utils/walletManager");
 
+  if (Array.isArray(botConfig.wallets)) {
+    loadWalletsFromLabels(botConfig.wallets); // expects: ["default"]
+  }
 
+  const seen = new Set();
+  let todayTotal = 0;
+  let failureCount = 0;
 
-// Runtime state
-const seen = new Set();
-let todayTotal = 0;
-let failureCount = 0;
+  async function sniperBot() {
+    setInterval(async () => {
+      console.log(`\n🎯 Sniper Tick @ ${new Date().toLocaleTimeString()}`);
 
+      if (failureCount >= HALT_ON_FAILURES) {
+        console.warn(`🛑 Bot halted after ${failureCount} consecutive failures.`);
+        return;
+      }
 
-async function sniperBot() {
-  setInterval(async () => {
-    console.log(`\n🎯 Sniper Tick @ ${new Date().toLocaleTimeString()}`);
+      try {
+        const allTokens = await fetchTokenList();
+        const targets = MONITORED.length > 0
+          ? allTokens.filter(mint => MONITORED.includes(mint))
+          : allTokens;
 
-    if (failureCount >= HALT_ON_FAILURES) {
-      console.warn(`🛑 Bot halted after ${failureCount} consecutive failures.`);
-      return;
-    }
+        for (const mint of targets) {
+          if (seen.has(mint)) continue;
+          seen.add(mint);
 
-    try {
-      const allTokens = await fetchTokenList();
-      const targets = MONITORED.length > 0
-        ? allTokens.filter(mint => MONITORED.includes(mint))
-        : allTokens;
+          console.log(`🔍 Token: ${mint} — Checking...`);
 
-      for (const mint of targets) {
-        if (seen.has(mint)) continue;
-        seen.add(mint);
+          const wallet = getCurrentWallet();
+          const balance = await getWalletBalance(wallet);
+          if (!isAboveMinBalance(balance, MIN_BALANCE)) {
+            console.log("⚠️ Low balance. Skipping.");
+            continue;
+          }
 
-        console.log(`🔍 Token: ${mint} — Checking...`);
+          if (!isWithinDailyLimit(SNIPE_AMOUNT / 1e9, todayTotal, MAX_DAILY)) {
+            console.log("⚠️ Daily limit reached.");
+            continue;
+          }
 
-        const wallet = getWallet();
-        const balance = await getWalletBalance(wallet);
-        if (!isAboveMinBalance(balance, MIN_BALANCE)) {
-          console.log("⚠️ Low balance. Skipping.");
-          return;
-        }
+          const [priceChange, volume] = await Promise.all([
+            getTokenPriceChange(mint, 1),
+            getTokenVolume(mint),
+          ]);
 
-        if (!isWithinDailyLimit(SNIPE_AMOUNT / 1e9, todayTotal, MAX_DAILY)) {
-          console.log("⚠️ Daily limit reached.");
-          return;
-        }
+          if (priceChange < ENTRY_THRESHOLD) {
+            console.log(`📉 ${mint} not pumping enough (${(priceChange * 100).toFixed(2)}%)`);
+            continue;
+          }
 
-        const [priceChange, volume] = await Promise.all([
-          getTokenPriceChange(mint, 1), // 1h for snipe threshold
-          getTokenVolume(mint)
-        ]);
+          if (volume < VOLUME_THRESHOLD) {
+            console.log(`💤 Volume too low (${volume})`);
+            continue;
+          }
 
-        if (priceChange < ENTRY_THRESHOLD) {
-          console.log(`📉 ${mint} not pumping enough (${(priceChange * 100).toFixed(2)}%)`);
-          continue;
-        }
+          const isSafe = await isSafeToBuy(mint);
+          if (!isSafe) {
+            console.log(`🚫 Unsafe token: ${mint}`);
+            continue;
+          }
 
-        if (volume < VOLUME_THRESHOLD) {
-          console.log(`💤 Volume too low (${volume})`);
-          continue;
-        }
+          console.log(`✅ Target acquired. Attempting to snipe ${mint}`);
 
-        const isSafe = await isSafeToBuy(mint);
-        if (!isSafe) {
-          console.log(`🚫 Unsafe token: ${mint}`);
-          continue;
-        }
+          const quote = await getSwapQuote({
+            inputMint: BASE_MINT,
+            outputMint: mint,
+            amount: SNIPE_AMOUNT,
+            slippage: SLIPPAGE,
+          });
 
-        console.log(`✅ Target acquired. Attempting to snipe ${mint}`);
+          if (!quote) {
+            console.warn("⚠️ No quote available.");
+            failureCount++;
+            continue;
+          }
 
-        const quote = await getSwapQuote({
-          inputMint: BASE_MINT,
-          outputMint: mint,
-          amount: SNIPE_AMOUNT,
-          slippage: SLIPPAGE
-        });
+          if (DRY_RUN) {
+            console.log("🧪 DRY RUN MODE — Not executing.");
+            logTrade({
+              timestamp: new Date().toISOString(),
+              strategy: "sniper",
+              inputMint: BASE_MINT,
+              outputMint: mint,
+              inAmount: SNIPE_AMOUNT,
+              outAmount: quote.outAmount,
+              priceImpact: quote.priceImpactPct * 100,
+              txHash: null,
+              success: true,
+              dryRun: true,
+            });
+            continue;
+          }
 
-        if (!quote) {
-          console.warn("⚠️ No quote available.");
-          failureCount++;
-          continue;
-        }
+          const tx = await executeSwap({ quote, wallet });
 
-        if (DRY_RUN) {
-          console.log("🧪 DRY RUN MODE — Not executing.");
-          logTrade({
+          const logData = {
             timestamp: new Date().toISOString(),
             strategy: "sniper",
             inputMint: BASE_MINT,
@@ -140,54 +171,38 @@ async function sniperBot() {
             inAmount: SNIPE_AMOUNT,
             outAmount: quote.outAmount,
             priceImpact: quote.priceImpactPct * 100,
-            txHash: null,
-            success: true,
-            dryRun: true
-          });
-          continue;
+            txHash: tx || null,
+            success: !!tx,
+            takeProfit: TAKE_PROFIT,
+            stopLoss: STOP_LOSS,
+          };
+
+          logTrade(logData);
+
+          if (tx) {
+            todayTotal += SNIPE_AMOUNT / 1e9;
+            const explorer = `https://explorer.solana.com/tx/${tx}?cluster=mainnet-beta`;
+            console.log(`🚀 Sniped ${mint}: ${explorer}`);
+            await sendTelegramMessage(`🚀 *Sniped*\nMint: \`${mint}\`\n[TX](${explorer})`);
+            failureCount = 0;
+          } else {
+            console.log("❌ Swap failed.");
+            failureCount++;
+            await sendTelegramMessage(`❌ *Snipe Failed* for \`${mint}\``);
+          }
+
+          break; // One per tick
         }
-
-        const tx = await executeSwap({ quote, wallet });
-
-        const logData = {
-          timestamp: new Date().toISOString(),
-          strategy: "sniper",
-          inputMint: BASE_MINT,
-          outputMint: mint,
-          inAmount: SNIPE_AMOUNT,
-          outAmount: quote.outAmount,
-          priceImpact: quote.priceImpactPct * 100,
-          txHash: tx || null,
-          success: !!tx,
-          takeProfit: TAKE_PROFIT,
-          stopLoss: STOP_LOSS
-        };
-
-        logTrade(logData);
-
-        if (tx) {
-          todayTotal += SNIPE_AMOUNT / 1e9;
-          const explorer = `https://explorer.solana.com/tx/${tx}?cluster=mainnet-beta`;
-          console.log(`🚀 Sniped ${mint}: ${explorer}`);
-          await sendTelegramMessage(`🚀 *Sniped*\nMint: \`${mint}\`\n[TX](${explorer})`);
-          failureCount = 0;
-        } else {
-          console.log("❌ Swap failed.");
-          failureCount++;
-          await sendTelegramMessage(`❌ *Snipe Failed* for \`${mint}\``);
-        }
-
-        break; // One per tick
+      } catch (err) {
+        failureCount++;
+        console.error("💥 Bot Error:", err.message);
+        await sendTelegramMessage(`⚠️ *Sniper Error*\n${err.message}`);
       }
-    } catch (err) {
-      failureCount++;
-      console.error("💥 Bot Error:", err.message);
-      await sendTelegramMessage(`⚠️ *Sniper Error*\n${err.message}`);
-    }
-  }, SCAN_INTERVAL);
-}
+    }, SCAN_INTERVAL);
+  }
 
-module.exports = sniperBot;
+  sniperBot();
+}
 
 /**
  * Additions: 

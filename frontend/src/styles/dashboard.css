@@ -1,159 +1,80 @@
-.trade-table-container {
-    background-color: #111;
-    padding: 1rem;
-    border-radius: 10px;
-    color: #eee;
-    box-shadow: 0 0 10px #0ff3;
-  }
-  
-  .trade-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-    font-size: 0.9rem;
-  }
-  
-  .trade-table th,
-  .trade-table td {
-    padding: 0.5rem;
-    text-align: center;
-    border-bottom: 1px solid #222;
-  }
-  
-  .trade-table th {
-    background-color: #222;
-    color: #00f2ff;
-    font-weight: bold;
-  }
-  
-  .status-ok {
-    color: #00ff99;
-    font-weight: bold;
-  }
-  .status-fail {
-    color: #ff4e4e;
-    font-weight: bold;
-  }
-  
-  .no-trades {
-    color: #888;
-    margin-top: 1rem;
-    font-style: italic;
-  }
-  
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  .active-banner {
-    background-color: #002d1f;
-    border: 1px solid #00ff88;
-    color: #00ff88;
-    padding: 0.75rem 1rem;
-    margin: 1rem 0;
-    border-radius: 10px;
-    font-weight: bold;
-    box-shadow: 0 0 8px #00ff8855;
-  }
-
-
-
-  /* Button states */
-.start-btn,
-.stop-btn {
-  padding: 10px 18px;
-  margin: 0 10px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.3s ease;
+/* Main app container */
+.app-container {
+  @apply max-w-6xl mx-auto px-4 py-6 text-white;
 }
 
-.start-btn {
-  background-color: #22c55e; /* Tailwind green-500 */
-  color: white;
+/* Header */
+.app-container h1 {
+  @apply text-3xl font-bold mb-4;
 }
 
-.stop-btn {
-  background-color: #ef4444; /* Tailwind red-500 */
-  color: white;
+/* Active Mode Banner */
+.active-banner {
+  @apply bg-emerald-950 border border-emerald-400 text-emerald-400 p-3 rounded-lg font-bold shadow-md mb-4;
 }
 
-.start-btn:disabled,
-.stop-btn:disabled {
-  background-color: #9ca3af; /* Tailwind gray-400 */
-  cursor: not-allowed;
-  opacity: 0.7;
+/* Auto-Restart toggle */
+.auto-restart-toggle {
+  @apply my-4;
+}
+.auto-restart-toggle label {
+  @apply flex items-center gap-2 font-medium;
 }
 
-/* Optional spinner class (for future use) */
-.loading-spinner {
-  width: 18px;
-  height: 18px;
-  border: 3px solid #ffffff;
-  border-top: 3px solid #22c55e;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  display: inline-block;
-  vertical-align: middle;
-  margin-left: 8px;
+/* Recap Panel */
+.recap-panel {
+  @apply bg-gray-800 p-4 rounded-lg text-white mb-4;
+}
+.recap-panel h3 {
+  @apply text-lg font-semibold mb-2;
+}
+.recap-panel ul {
+  @apply space-y-1;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* Refresh Button */
+.refresh-recap-btn {
+  @apply bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-md mb-4;
 }
 
-.chart-container {
-    background: #1f2937;
-    padding: 20px;
-    margin-top: 20px;
-    border-radius: 12px;
-    color: white;
-  }
-  
+/* Chart Toggle */
+.chart-toggle {
+  @apply my-4;
+}
+.chart-toggle label {
+  @apply font-medium;
+}
+.chart-toggle select {
+  @apply ml-2 px-2 py-1 font-semibold text-black rounded;
+}
 
+/* Strategy Filter */
+.sticky-strategy-filter {
+  @apply sticky top-0 bg-[#0e0e0e] z-50 p-2 mb-2 shadow-md;
+}
+.sticky-strategy-filter label {
+  @apply font-medium;
+}
+.sticky-strategy-filter select {
+  @apply ml-2 px-2 py-1 text-black rounded;
+}
 
-  .chart-toggle {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-  }
-  .chart-toggle select {
-    margin-left: 0.5rem;
-    padding: 4px;
-    font-weight: bold;
-  }
+/* CSV Export */
+.csv-export {
+  @apply my-4;
+}
+.csv-export button {
+  @apply bg-green-400 hover:bg-green-500 text-black font-bold px-4 py-2 rounded-md;
+}
 
-
-  .csv-export {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-  }
-  
-  .csv-export button {
-    padding: 8px 16px;
-    background: #4ade80;
-    border: none;
-    border-radius: 6px;
-    color: #111;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.2s ease;
-  }
-  
-  .csv-export button:hover {
-    background: #22c55e;
-  }
-  
-
-  .reset-logs button {
-    margin-top: 0.5rem;
-    padding: 8px 16px;
-    background: #ef4444;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  .reset-logs button:hover {
-    background: #dc2626;
-  }
+/* Reset Logs */
+.reset-logs {
+  @apply my-4;
+}
+.reset-logs button {
+  @apply bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md;
+}

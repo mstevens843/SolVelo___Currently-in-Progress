@@ -17,7 +17,7 @@
  */
 
 const { getSwapQuote, executeSwap } = require("../../utils/swap");
-const { getWallet, isSafeToBuy, logTrade, isAboveMinBalance, isWithinDailyLimit } = require("../utils");
+const { getWallet, isSafeToBuy, logTrade, isAboveMinBalance, isWithinDailyLimit, getWalletBalance, loadWalletsFromArray } = require("../utils");
 const { getTokenVolume, getTokenPriceChange } = require("../../utils/marketData");
 const { sendTelegramMessage } = require("../../telegram/bots");
 require("dotenv").config();
@@ -57,7 +57,23 @@ async function scalperBot() {
       return;
     }
 
-    const wallet = getWallet();
+    // Load wallets sent from frontend config (as stringified secret keys)
+    if (Array.isArray(botConfig.wallets)) {
+      loadWalletsFromArray(botConfig.wallets);
+    }
+
+    const wallet = getCurrentWallet(); // ✅ now safe to get active wallet
+
+    if (solBalance < MIN_SOL) {
+      console.warn(`⚠️ Not enough SOL for transaction fees (${solBalance} SOL). Skipping rebalance.`);
+      return;
+    }
+  
+    if (failureCount >= HALT_ON_FAILURES) {
+      console.warn("🛑 Too many failures. Bot paused.");
+      return;
+    }
+
 
     for (const mint of MONITORED) {
       try {

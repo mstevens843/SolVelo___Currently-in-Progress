@@ -11,25 +11,48 @@
 
 
 import React from "react";
-import "@/styles/components/StartStopControls.css"; 
+import "@/styles/components/StartStopControls.css";
+import { toast } from "react-toastify";
 
-const StartStopControls = ({ onStart, onStop, running, selected, loading, disabled, confirmed }) => {
-    return (
+const StartStopControls = ({ onStart, onStop, running, selected, loading }) => {
+  const handleStart = () => {
+    if (!selected) {
+      toast.info("⚠️ Please select a strategy first.");
+      return;
+    }
+    if (!running && !loading) onStart();
+  };
+
+  const handleStop = () => {
+    if (running && !loading) onStop();
+  };
+
+  return (
     <div className="start-stop-controls">
       <button
-        onClick={onStart}
-        disabled={!selected || running || loading}
-        className="start-btn"
-      >
-        {loading && !running ? "⏳ Starting..." : "▶️ Start"}
-      </button>
-      <button
-        onClick={onStop}
-        disabled={!running || loading}
-        className="stop-btn"
-      >
-        {loading && running ? "🛑 Stopping..." : "⏹ Stop"}
-      </button>
+  onClick={handleStart}
+  className={`start-btn ${!selected ? "tooltip-wrapper" : ""}`}
+>
+  {loading && !running
+    ? "⏳ Starting..."
+    : running
+    ? "▶️  Started"
+    : "▶️ Start"}
+  {!selected && (
+    <span className="hover-tooltip">Select a strategy first</span>
+  )}
+</button>
+
+<button
+  onClick={handleStop}
+  className="stop-btn"
+>
+  {loading && running
+    ? "🛑 Stopping..."
+    : !running && !loading
+    ? "🛑 Stopped"
+    : "⏹ Stop"}
+</button>
     </div>
   );
 };

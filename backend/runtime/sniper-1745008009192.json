@@ -1,0 +1,12 @@
+{
+  "slippage": 0.5,
+  "interval": 3000,
+  "maxTrades": "",
+  "inputMint": "default",
+  "monitoredTokens": [
+    "So11111111111111111111111111111111111111112"
+  ],
+  "wallets": [
+    "default"
+  ]
+}

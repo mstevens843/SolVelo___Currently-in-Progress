@@ -18,7 +18,7 @@
 
 const { getTokenBalance, getTokenPrice } = require("../../utils/marketData");
 const { getSwapQuote, executeSwap } = require("../../utils/swap");
-const { logTrade, isSafeToBuy, getWallet } = require("../utils");
+const { logTrade, isSafeToBuy, getWallet, getWalletBalance, loadWalletsFromArray } = require("../utils");
 const { sendTelegramMessage } = require("../../telegram/bots");
 const { PublicKey } = require("@solana/web3.js");
 require("dotenv").config();
@@ -36,8 +36,21 @@ const HALT_ON_FAILURES = parseInt(botConfig.haltOnFailures ?? 3);
 let failureCount = 0;
 
 async function rebalancer() {
-  const wallet = getWallet();
-  console.log("\n📐 Portfolio Rebalance Check");
+// Load wallets sent from frontend config (as stringified secret keys)
+  if (Array.isArray(botConfig.wallets)) {
+        loadWalletsFromArray(botConfig.wallets);
+      }
+  
+
+  const wallet = getCurrentWallet(); // ✅ now safe to get active wallet  console.log("\n📐 Portfolio Rebalance Check");
+
+  const solBalance = await getWalletBalance(wallet);
+  const MIN_SOL = 0.01;
+
+  if (solBalance < MIN_SOL) {
+    console.warn(`⚠️ Not enough SOL for transaction fees (${solBalance} SOL). Skipping rebalance.`);
+    return;
+  }
 
   if (failureCount >= HALT_ON_FAILURES) {
     console.warn("🛑 Too many failures. Bot paused.");

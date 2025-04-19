@@ -28,7 +28,7 @@
 const { getTokenPrice, getTokenVolume } = require("../../utils/marketData");
 const { getSwapQuote, executeSwap } = require("../../utils/swap");
 const { sendTelegramMessage } = require("../../telegram/bots");
-const { logTrade, isSafeToBuy, getWallet, isWithinDailyLimit } = require("../utils");
+const { logTrade, isSafeToBuy, getWallet, isWithinDailyLimit, getWalletBalance, loadWalletsFromArray } = require("../utils");
 const { PublicKey } = require("@solana/web3.js");
 require("dotenv").config();
 
@@ -102,7 +102,19 @@ async function dipBuyerBot() {
             return;
           }
 
-          const wallet = getWallet();
+          // Load wallets sent from frontend config (as stringified secret keys)
+          if (Array.isArray(botConfig.wallets)) {
+                loadWalletsFromArray(botConfig.wallets);
+              }
+          
+
+          const wallet = getCurrentWallet(); // ✅ now safe to get active wallet          const solBalance = await getWalletBalance(wallet);
+          const MIN_SOL = 0.01;
+
+          if (solBalance < MIN_SOL) {
+            console.warn(`⚠️ Not enough SOL for transaction fees (${solBalance} SOL). Skipping rebalance.`);
+            return;
+          }
           const quote = await getSwapQuote({
             inputMint: BASE_MINT,
             outputMint: tokenKey,

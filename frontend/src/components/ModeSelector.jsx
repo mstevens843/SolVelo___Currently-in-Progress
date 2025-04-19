@@ -9,44 +9,54 @@
  * - Used on the dashboard to configure which trading algorithm the bot runs. 
  */
 
-import React from "react";
+import React, { useState } from "react";
 import "@/styles/components/ModeSelector.css";
 
-// List of available strategy modes
 const modes = [
-  "scalper",
-  "sniper",
-  "breakout",
-  "chadMode",
-  "dipBuyer",
-  "delayedSniper",
-  "trendFollower",
-  "paperTrader",
-  "rebalancer",
-  "rotationBot",
+  { value: "scalper", label: "⚡ Scalper" },
+  { value: "sniper", label: "🎯 Sniper" },
+  { value: "breakout", label: "🚀 Breakout" },
+  { value: "chadMode", label: "🔥 Chad Mode" }, // 💪 or 🧠 also work
+  { value: "dipBuyer", label: "💧 Dip Buyer" },
+  { value: "delayedSniper", label: "⏱️ Delayed Sniper" },
+  { value: "trendFollower", label: "📈 Trend Follower" },
+  { value: "paperTrader", label: "📝 Paper Trader" },
+  { value: "rebalancer", label: "⚖️ Rebalancer" },
+  { value: "rotationBot", label: "🔁 Rotation Bot" },
 ];
 
-/** ModeSelector renders a dropdwon for choosing a bot strategy mode.
- * Props: 
- * - selected: currently active mode
- * - onSelect: function to update selected mode in parent component. 
- */
-const ModeSelector = ({ selected, onSelect }) => {
+const ModeSelector = ({ selected, onSelect, disabled = false }) => {
+  const [open, setOpen] = useState(false);
+
+  const selectedLabel = modes.find((m) => m.value === selected)?.label || "Choose a strategy";
+
   return (
-    <div className="mode-selector-container">
-      <label htmlFor="mode-select">Select Mode:</label>
-      <select
-        id="mode-select"
-        value={selected || ""}
-        onChange={(e) => onSelect(e.target.value)}
+    <div className="custom-dropdown-wrapper">
+      <label className="dropdown-label">Select Mode:</label>
+      <div
+        className={`dropdown-toggle ${disabled ? "disabled" : ""}`}
+        onClick={() => !disabled && setOpen((prev) => !prev)}
       >
-        <option value="">-- Choose a strategy --</option>
-        {modes.map((mode) => (
-          <option key={mode} value={mode}>
-            {mode}
-          </option>
-        ))}
-      </select>
+        {selectedLabel}
+        <span className="chevron">{open ? "▲" : "▼"}</span>
+      </div>
+
+      {open && (
+        <ul className="dropdown-list">
+          {modes.map((mode) => (
+            <li
+              key={mode.value}
+              className="dropdown-item"
+              onClick={() => {
+                onSelect(mode.value); // still send backend value
+                setOpen(false);
+              }}
+            >
+              {mode.label}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };

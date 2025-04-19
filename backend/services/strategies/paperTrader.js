@@ -43,6 +43,8 @@ let dailyTrades = 0;
 
 async function paperTrader() {
   console.log(`\n📊 Paper Trader Check @ ${new Date().toLocaleTimeString()}`);
+  console.log("🧠 paperTrader script is running...");
+
 
   if (dailyTrades >= MAX_DAILY_TRADES) {
     console.log("🛑 Max daily trades hit.");
@@ -120,7 +122,9 @@ async function paperTrader() {
     }
   }
 
-  setTimeout(paperTrader, INTERVAL);
+  // setTimeout(paperTrader, INTERVAL);
+  setInterval(paperTrader, INTERVAL);
+
 }
 
 module.exports = paperTrader;

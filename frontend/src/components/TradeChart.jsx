@@ -66,7 +66,7 @@ const TradeChart = ({ trades }) => {
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={formatted}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="time" />
+          <XAxis dataKey="time" />‹‹
           <YAxis />
           <Tooltip />
           <Line type="monotone" dataKey="outAmount" stroke="#22c55e" dot={true} />

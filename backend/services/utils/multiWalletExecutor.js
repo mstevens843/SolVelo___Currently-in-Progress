@@ -42,7 +42,7 @@ function loadWallets() {
     process.exit(1);
   }
 
-  const files = fs.readdirSync(WALLET_DIR).filter(f => f.endsWith(".txt"));
+  const files = fs.readdirSync(WALLET_DIR).filter(f => !f.startsWith(".")); // ignore hidden files only
 
   if (!files.length) {
     console.error("❌ No wallet files found in /wallets.");

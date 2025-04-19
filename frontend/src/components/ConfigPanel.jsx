@@ -18,7 +18,7 @@ import "@/styles/components/ConfigPanel.css";
  * - config: current config state object
  * - setConfig: function to update config state
  */
-const ConfigPanel = ({ config, setConfig }) => {
+const ConfigPanel = ({ config, setConfig, disabled = false }) => {
 
 
     /** updates specific config value in parent state
@@ -38,12 +38,14 @@ const ConfigPanel = ({ config, setConfig }) => {
       <label>
         Slippage (%)
         <input
-          type="number"
-          step="0.1"
-          name="slippage"
-          value={config.slippage}
-          onChange={handleChange}
-        />
+        type="number"
+        step="0.1"
+        name="slippage"
+        value={config.slippage}
+        onChange={handleChange}
+        disabled={disabled}
+        title={disabled ? "Stop the bot to edit config" : ""}
+      />
       </label>
       <label>
         Trade Interval (ms)
@@ -52,6 +54,8 @@ const ConfigPanel = ({ config, setConfig }) => {
           name="interval"
           value={config.interval}
           onChange={handleChange}
+          disabled={disabled}
+          title={disabled ? "Stop the bot to edit config" : ""}
         />
       </label>
       <label>
@@ -61,6 +65,8 @@ const ConfigPanel = ({ config, setConfig }) => {
           name="maxTrades"
           value={config.maxTrades}
           onChange={handleChange}
+          disabled={disabled}
+          title={disabled ? "Stop the bot to edit config" : ""}
         />
       </label>
     </div>

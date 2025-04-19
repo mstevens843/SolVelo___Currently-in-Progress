@@ -211,3 +211,41 @@ npm run dev
     - Success/Failure count 
     - Best/Worst Trade by Performance 
     
+
+
+
+    💅 UI Refactor & Tailwind Styling
+Full visual overhaul using Tailwind CSS 3.4.7 for a modern, responsive dashboard interface.
+
+🔧 Component-Level Styling
+Each major component now uses a dedicated CSS file with @apply-based Tailwind utilities:
+
+
+Component	Stylesheet	Purpose
+App.jsx	App.css	Layout container, banners, filters, toggles
+ConfigPanel.jsx	ConfigPanel.css	Slippage, interval, max trade controls
+StartStopControls	StartStopControls.css	Start/Stop button logic
+TradeTable.jsx	TradeTable.css	Live trade history table
+TradeChart.jsx	TradeChart.css	Output chart with toggle for full history
+PortfolioChart.jsx	PortfolioChart.css	Simulated portfolio equity curve
+HistoryPanel.jsx	HistoryPanel.css	Full trade log summary
+LogsConsole.jsx	LogsConsole.css	WebSocket-powered real-time logging console
+ModeSelector.jsx	ModeSelector.css	Strategy selection dropdown
+🎨 Style Highlights
+Theme: Dark mode (zinc base), with accent highlights (emerald, red, cyan, blue)
+
+Utility-First: All styling is applied using Tailwind’s @apply in external .css files (no inline clutter)
+
+Consistent Containers: All panels follow a shared layout: bg-zinc-900, p-5, rounded-lg, shadow-md, border-zinc-700
+
+Typography: font-sans base, font-mono for logs, semantic sizing with Tailwind
+
+Want me to regenerate this for a /docs/STYLE_GUIDE.md version as well or include screenshots later?
+
+
+
+2YcrYNAzK1nWQzm8jM1d83Fo8RABbE8rD9Y62Pn6wMiV8oJrAAzKD2P1UfjV2xD9XQXsDNrvfcgy1RpAcKy4pQxF
+oLFXPejpzBwoJ992CSFMqVr3o2UxTfYGPwVZQmhzpmVQX9Tep9EbhkXJ3D9LyhUT7ki4877GymVD2eC4jsQtEB8
+
+
+So11111111111111111111111111111111111111112

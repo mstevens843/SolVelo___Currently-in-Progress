@@ -1,130 +1,117 @@
 /** Mode Routes: Mode Control Routes for Solana Bot Strategies
- * - Controls starting, stopping, and checking th estatus of trading bots. 
- * - Handles child process spawning and auto-restart logic. 
+ * - Controls starting, stopping, and checking the status of trading bots.
+ * - Handles child process spawning and auto-restart logic.
  */
 const express = require("express");
 const { spawn } = require("child_process");
 const router = express.Router();
+const fs = require("fs");
+const path = require("path");
 
-let lastStarted = null; // Store the most recent mode/config for restart
-
-
+let currentModeProcess = null;
+let lastConfigPath = null;
+let lastMode = null;
 
 /** 
- * @route Public POST /api/mode/start
- * @desc: Start a new trading stategy bot process 
+ * @route POST /api/mode/start
+ * @desc Start a new trading strategy bot process 
  */
 router.post("/start", (req, res) => {
-    const { mode, config } = req.body;
-  
-    if (!mode) {
-      return res.status(400).json({ error: "Mode is required." });
-    }
-  
-    if (req.currentModeProcess) {
-      return res
-        .status(409)
-        .json({ error: "Another mode is already running." });
-    }
+  const { mode, config } = req.body;
+  console.log("🛰️ Received start request:", { mode, config });
 
-    // track last started config for potential auto-restart
-    lastStarted = { mode, config };   
-    
-    // Inject cofig into process.env for child process.
-    const configEnv = {
-      ...process.env,
-      BOT_CONFIG: JSON.stringify(config || {}),
+  if (!mode || !config) {
+    return res.status(400).json({ error: "Mode and config are required." });
+  }
+
+  if (currentModeProcess) {
+    return res.status(409).json({ error: "A bot is already running." });
+  }
+
+  const configDir = path.join(__dirname, "../runtime");
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir);
+  }
+
+  const timestamp = Date.now();
+  const configFilename = `${mode}-${timestamp}.json`;
+  const configPath = path.join(configDir, configFilename);
+
+  try {
+    const sanitizedConfig = {
+      ...config,
+      wallets: (config.wallets || []).map((w) =>
+        w.trim().replace(/^"+|"+$/g, "")
+      ),
     };
-    
-    // Inject config into process.env for child process
-    const proc = spawn("node", [`services/${mode}.js`], {
-      stdio: "inherit",
-      cwd: process.cwd(),
-      env: configEnv,
-    });
-    
-    req.setModeProcess(proc); // attach bot process globally
 
-    // Handle bot crash/exit
-    proc.on("exit", (code, signal) => {
-        console.warn(`⚠️ Bot process exited with code ${code} / signal ${signal}`);
-      
-        // Clear the current process state
-        req.setModeProcess(null);
-      
-        // Auto-restart logic
-        const shouldRestart = JSON.parse(
-          req.headers["x-auto-restart"] || "true"
-        );
-        
-        // Auto-restart logic
-        if (shouldRestart && lastStarted) {
-          console.log("🔁 Auto-restarting bot with last known config...");
-      
-          setTimeout(() => {
-            const retryProc = spawn("node", [`services/${lastStarted.mode}.js`], {
-              stdio: "inherit",
-              cwd: process.cwd(),
-              env: {
-                ...process.env,
-                BOT_CONFIG: JSON.stringify(lastStarted.config || {}),
-              },
-            });
-      
-            req.setModeProcess(retryProc);
-          }, 3000); // wait 3 sec before restart
-        }
-      });
-  
-    console.log(`🚀 Starting ${mode} with config:`, config);
-  
-    return res.json({ message: `${mode} started.` });
+    fs.writeFileSync(configPath, JSON.stringify(sanitizedConfig, null, 2));
+    console.log("✅ Config written:", configPath);
+
+    lastConfigPath = configPath;
+    lastMode = mode;
+  } catch (err) {
+    console.error("❌ Failed to write config file:", err.message);
+    return res.status(500).json({ error: "Failed to write config file." });
+  }
+
+  console.log("🚀 Spawning strategy:", mode);
+
+  const proc = spawn("node", [`services/strategies/${mode}.js`, configPath], {
+    stdio: "inherit",
+    cwd: process.cwd(),
   });
-  
 
+  currentModeProcess = proc;
 
+  proc.on("exit", (code, signal) => {
+    console.warn(`⚠️ Bot exited: code ${code}, signal ${signal}`);
+    currentModeProcess = null;
 
+    const shouldRestart = JSON.parse(req.headers["x-auto-restart"] || "true");
+
+    if (shouldRestart && lastMode && lastConfigPath) {
+      console.log("🔁 Restarting bot...");
+
+      setTimeout(() => {
+        const retryProc = spawn("node", [`services/strategies/${lastMode}.js`, lastConfigPath], {
+          stdio: "inherit",
+          cwd: process.cwd(),
+        });
+
+        currentModeProcess = retryProc;
+      }, 3000);
+    }
+  });
+
+  return res.json({ message: `${mode} started.` });
+});
 
 /**
  * @route POST /api/mode/stop
- * @access Public
- * @desc: Gracefully stop the current bot process. 
+ * @desc Gracefully stop the current bot process
  */
 router.post("/stop", (req, res) => {
-  if (!req.currentModeProcess) {
-    return res.status(400).json({ error: "No mode currently running." });
+  if (!currentModeProcess) {
+    return res.status(400).json({ error: "No bot is currently running." });
   }
 
-  req.currentModeProcess.kill("SIGINT");
-  req.setModeProcess(null);
-
+  currentModeProcess.kill("SIGINT");
+  currentModeProcess = null;
   return res.json({ message: "Bot stopped." });
 });
 
-router.get("/status", (req, res) => {
-  if (!req.currentModeProcess) {
-    return res.json({ running: false });
-  }
-  return res.json({ running: true });
-});
-
-
-
-
-
 /**
  * @route GET /api/mode/status
- * @access Public
- * @desc: Returns bot status, running mode and dryRun flag. 
+ * @desc Returns bot status and mode info
  */
 router.get("/status", (req, res) => {
-  const running = !!req.currentModeProcess;
-
-  const config = process.env.BOT_CONFIG ? JSON.parse(process.env.BOT_CONFIG) : {};
-  const mode = config?.strategy || process.env.BOT_MODE || "idle";
-  const dryRun = config?.dryRun ?? true;
-
-  return res.json({ running, mode, dryRun });
+  const running = !!currentModeProcess;
+  return res.json({
+    running,
+    mode: lastMode || "idle",
+    configPath: lastConfigPath || null,
+  });
 });
 
 module.exports = router;

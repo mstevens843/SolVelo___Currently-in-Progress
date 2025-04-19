@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Table container wrapper */
+.trade-table-container {
+  @apply bg-zinc-900 p-5 rounded-lg mb-6 shadow-md border border-zinc-700 text-white;
+}
+
+.trade-table-container h3 {
+  @apply text-xl font-semibold mb-4;
+}
+
+/* No trades fallback message */
+.no-trades {
+  @apply text-zinc-400 mt-2 italic;
+}
+
+/* Actual table */
+.trade-table {
+  @apply w-full border-collapse mt-2 text-sm;
+}
+
+/* Table headers */
+.trade-table th {
+  @apply bg-zinc-800 text-cyan-300 font-semibold px-3 py-2 text-center border-b border-zinc-700;
+}
+
+/* Table cells */
+.trade-table td {
+  @apply px-3 py-2 text-center border-b border-zinc-800;
+}
+
+/* Status colors */
+.status-ok {
+  @apply text-emerald-400 font-bold;
+}
+
+.status-fail {
+  @apply text-red-400 font-bold;
+}

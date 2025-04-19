@@ -21,7 +21,7 @@
 
 const { getTokenPriceChange, getTokenVolume } = require("../../utils/marketData.js");
 const { getSwapQuote, executeSwap } = require("../../utils/swap.js");
-const { logTrade, isSafeToBuy, getWallet } = require("../utils/index.js");
+const { logTrade, isSafeToBuy, getWallet, getWalletBalance, loadWalletsFromArray } = require("../utils/index.js");
 const { sendTelegramMessage } = require("../../telegram/bots.js");
 const { PublicKey } = require("@solana/web3.js");
 require("dotenv").config();
@@ -76,7 +76,18 @@ async function trendFollowerBot() {
             continue;
           }
   
-          const wallet = getWallet();
+          if (Array.isArray(botConfig.wallets)) {
+                loadWalletsFromArray(botConfig.wallets);
+              }
+          
+          const wallet = getCurrentWallet(); // ✅ now safe to get active wallet
+          const balance = await getWalletBalance(wallet);
+          const MIN_BALANCE = 0.02;
+
+          if (balance < MIN_BALANCE) {
+            console.log(`⚠️ Wallet balance too low (${balance}). Skipping ${tokenMint}.`);
+            continue;
+}
   
           const quote = await getSwapQuote({
             inputMint: BASE_MINT,

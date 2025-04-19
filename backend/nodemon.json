@@ -1,0 +1,5 @@
+{
+    "watch": ["api", "index.js"],
+    "ignore": ["services/strategies", "logs", "temp-config-*.json", "trades.json"]
+  }
+  

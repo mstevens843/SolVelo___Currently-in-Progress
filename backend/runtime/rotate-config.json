@@ -1,0 +1,14 @@
+{
+  "slippage": 0.5,
+  "interval": 5000,
+  "maxTrades": 3,
+  "wallets": [
+    "4zVK4aPpFeQeYVsqPqvEq59BkK3YzvHCGPxP7sLtTyhUeYX2oTZRbddu2CfPf2rUn1s6aRW1kAvjxzJGHR6iHBs2"
+  ],
+  "monitoredTokens": [
+    "So11111111111111111111111111111111111111112"
+  ],
+  "stopLoss": 0.1,
+  "takeProfit": 0.25,
+  "entryThreshold": 3
+}

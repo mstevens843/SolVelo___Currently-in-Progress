@@ -13,6 +13,9 @@
 const { Connection, Keypair, PublicKey } = require("@solana/web3.js");
 const fs = require("fs");
 const path = require("path");
+const bs58 = require("bs58");
+
+
 
 const connection = new Connection(process.env.SOLANA_RPC_URL);
 
@@ -48,22 +51,90 @@ function rotateWallet() {
   return currentWallet;
 }
 
+/** 
+ * Accept wallets array as argument
+ */
+function loadWalletsFromArray(secretKeys) {
+  wallets = secretKeys.map((key) => {
+    let secret;
+
+    // Try base58 first (Phantom-style)
+    try {
+      const decoded = bs58.decode(key);
+      if (decoded.length !== 64) throw new Error("Invalid base58 length");
+      secret = decoded;
+    } catch (e) {
+      // Fallback to Uint8Array from JSON
+      try {
+        const parsed = JSON.parse(key);
+        if (!Array.isArray(parsed) || parsed.length !== 64) throw new Error("Invalid JSON key length");
+        secret = Uint8Array.from(parsed);
+      } catch (e2) {
+        console.error("❌ Failed to parse wallet key:", e2.message);
+        throw new Error("Invalid wallet key: must be base58 or 64-byte JSON array");
+      }
+    }
+
+    return Keypair.fromSecretKey(secret);
+  });
+
+  currentWallet = wallets[0];
+}
+
+
+
+let loadedWallets = [];
+
+function loadWalletsFromLabels(walletLabels) {
+  loadedWallets = walletLabels.map((label) => {
+    const filePath = path.join(__dirname, "../../wallets", label);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Wallet file not found: ${label}`);
+    }
+
+    const raw = fs.readFileSync(filePath, "utf-8").trim();
+
+    try {
+      // Try parsing as base58
+      try {
+        const decoded = bs58.decode(raw);
+        return Keypair.fromSecretKey(decoded); // ✅ works for 32 or 64 bytes
+      } catch (e) {
+        // Try parsing as JSON array
+        const parsed = JSON.parse(raw);
+        const arr = Uint8Array.from(parsed);
+        return Keypair.fromSecretKey(arr);
+      }
+    } catch (err) {
+      throw new Error(`❌ Failed to parse wallet '${label}': ${err.message}`);
+    }
+  });
+
+  console.log(`🔐 Loaded ${loadedWallets.length} wallet(s):`, walletLabels);
+}
+function getCurrentWallet() {
+  if (!loadedWallets.length) throw new Error("No wallets loaded");
+  return loadedWallets[0]; // basic single-wallet mode
+}
+
 /**
  * ✅ Return current active wallet.
  */
-function getCurrentWallet() {
-  if (!currentWallet) throw new Error("No wallet loaded yet.");
-  return currentWallet;
-}
+// function getCurrentWallet() {
+//   if (!currentWallet) throw new Error("No wallet loaded yet.");
+//   return currentWallet;
+// } 
 
 /**
  * ✅ Returns the current wallet's balance in SOL. 
  */
-async function getWalletBalance(wallet = currentWallet) {
+async function getWalletBalance(wallet) {
+  if (!wallet) wallet = getCurrentWallet(); // ✅ fallback safely
   const pubkey = wallet.publicKey || new PublicKey(wallet);
   const lamports = await connection.getBalance(pubkey);
   return lamports / 1e9;
 }
+
 
 /**
  * ✅ Load walelt from environment or fallback to default keypair. 
@@ -114,4 +185,7 @@ module.exports = {
   rotateWallet,
   getCurrentWallet,
   getWalletBalance,
+  loadWalletsFromArray,
+  loadWalletsFromLabels, // ✅ ADD THIS
+
 };

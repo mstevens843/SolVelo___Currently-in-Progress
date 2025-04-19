@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Chart wrapper */
+.chart-container {
+  @apply bg-zinc-900 p-5 rounded-lg mb-6 shadow-md border border-zinc-700 text-white;
+}
+
+.chart-container h3 {
+  @apply text-xl font-semibold mb-4;
+}
+
+/* Toggle Full/Recent View */
+.toggle-view {
+  @apply mb-4;
+}
+
+.toggle-view label {
+  @apply flex items-center gap-2 font-medium;
+}
+
+.toggle-view input[type="checkbox"] {
+  @apply accent-emerald-500 w-4 h-4;
+}

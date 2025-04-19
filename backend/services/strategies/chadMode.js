@@ -18,7 +18,7 @@
 
 const { getSwapQuote, executeSwap } = require("../../utils/swap");
 const { sendTelegramMessage } = require("../../telegram/bots");
-const { logTrade, isSafeToBuy, getWallet } = require("../utils");
+const { logTrade, isSafeToBuy, getWallet, getWalletBalance, loadWalletsFromArray } = require("../utils");
 require("dotenv").config();
 
 const botConfig = JSON.parse(process.env.BOT_CONFIG || "{}");
@@ -50,8 +50,21 @@ async function chadMode() {
     return;
   }
 
-  const wallet = getWallet();
+  // Load wallets sent from frontend config (as stringified secret keys)
+  if (Array.isArray(botConfig.wallets)) {
+        loadWalletsFromArray(botConfig.wallets);
+      }
+  
+  const wallet = getCurrentWallet(); // ✅ now safe to get active wallet
   console.log(`\n🚨 CHAD MODE ENGAGED — Target: ${outputMint}`);
+
+  const solBalance = await getWalletBalance(wallet);
+  const MIN_SOL = 0.01;
+
+  if (solBalance < MIN_SOL) {
+    console.warn(`⚠️ Not enough SOL for transaction fees (${solBalance} SOL). Skipping rebalance.`);
+    return;
+  }
 
   try {
     const isSafe = await isSafeToBuy(outputMint);

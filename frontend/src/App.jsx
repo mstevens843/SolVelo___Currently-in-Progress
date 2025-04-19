@@ -19,6 +19,8 @@ import ConfigPanel from "./components/ConfigPanel";
 import TradeChart from "./components/TradeChart";
 import PortfolioChart from "./components/PortfolioChart";
 import HistoryPanel from "./components/HistoryPanel";
+import WalletLoader from "./components/WalletLoader";
+import TokenSelector from "./components/TokenSelector";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./styles/dashboard.css";
@@ -38,6 +40,16 @@ const App = () => {
   const [chartMode, setChartMode] = useState("trades");
   const [recap, setRecap] = useState(null);
   const [strategyFilter, setStrategyFilter] = useState("all");
+  const [wallets, setWallets] = useState([]);
+  const [activeWallet, setActiveWallet] = useState(null);
+
+  const [targetToken, setTargetToken] = useState(() => {
+    return localStorage.getItem("targetToken") || null;
+  });
+  const [selectedWallets, setSelectedWallets] = useState(() => {
+    const stored = localStorage.getItem("selectedWallets");
+    return stored ? JSON.parse(stored) : [];
+  });
 
 
 
@@ -137,36 +149,85 @@ useEffect(() => {
    */
   const startMode = async () => {
     setLoading(true);
+  
+    // 🟡 Sniper mode needs a token
+    if (selectedMode === "sniper" && !targetToken) {
+      toast.warn("🎯 Sniper mode requires a target token.");
+      setLoading(false);
+      return;
+    }
+  
+    // 🔁 Rotation Bot needs 2+ wallets
+    if (selectedMode === "rotationBot" && selectedWallets.length < 2) {
+      toast.warn("🔁 Rotation Bot requires at least two wallets.");
+      setLoading(false);
+      return;
+    }
+  
+    // 🚫 All other modes allow only 1 wallet
+    const singleWalletModes = [
+      "sniper",
+      "scalper",
+      "breakout",
+      "chadMode",
+      "dipBuyer",
+      "delayedSniper",
+      "trendFollower",
+      "rebalancer",
+      "paperTrader",
+    ];
+  
+    if (singleWalletModes.includes(selectedMode) && selectedWallets.length > 1) {
+      toast.warn(`🚫 ${selectedMode} allows only one selected wallet.`);
+      setLoading(false);
+      return;
+    }
+  
+    // 🔑 No wallets selected at all
+    if (!selectedWallets.length) {
+      toast.warn("🔑 Please select at least one wallet to use.");
+      setLoading(false);
+      return;
+    }
+  
     try {
+      const finalConfig = {
+        ...config,
+        inputMint: selectedWallets[0], // Always use first one
+        monitoredTokens: targetToken ? [targetToken] : [],
+        wallets: selectedWallets,
+        // wallets: selectedWallets.map(w => w.replace(/^"|"$/g, "")), // <-- strip extra quotes
+      };
+  
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/mode/start`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" ,
-        "x-auto-restart": JSON.stringify(autoRestart),
-        }, 
-        body: JSON.stringify({ mode: selectedMode, config }),
+        headers: {
+          "Content-Type": "application/json",
+          "x-auto-restart": JSON.stringify(autoRestart),
+        },
+        body: JSON.stringify({ mode: selectedMode, config: finalConfig }),
       });
   
       const data = await res.json();
       if (res.ok) {
-        console.log("✅ Started:", data);
-        toast.success(`🚀 ${selectedMode} started successfully!`);
+        toast.success(`🚀 ${selectedMode} started.`);
         setRunning(true);
       } else {
-        toast.error(`❌ ${data.error || "Failed to start strategy."}`);
+        toast.error(`❌ ${data.error || "Failed to start."}`);
       }
     } catch (err) {
-      console.error("❌ Start error:", err);
       toast.error("❌ Could not start strategy.");
     } finally {
       setLoading(false);
     }
   };
   
+  
   // stopMode - halts the bot
   const stopMode = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/mode/stop`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/mode/stop`, {
         method: "POST",
       });
 
@@ -203,12 +264,15 @@ useEffect(() => {
   ? trades
   : trades.filter((t) => t.strategy === strategyFilter);
 
-
+  useEffect(() => {
+    setSelectedWallets(["default"]);
+  }, []);
   
 
   return (
     <div className="app-container">
       <h1>🚀 Solana Bot Dashboard</h1>
+
 
       {/* Active Mode Banner */}
       {running && selectedMode && (
@@ -217,12 +281,53 @@ useEffect(() => {
         </div>
       )}
 
-      <ConfigPanel config={config} setConfig={setConfig} />
+        <WalletLoader
+          onWalletLoaded={() => {}}
+          onSelectionChange={(wallets) => setSelectedWallets(wallets)}
+        />
+    <TokenSelector
+      onMintSelected={(mint) => {
+        console.log("🔥 Token selected:", mint);
+        localStorage.setItem("targetToken", mint);
+        setTargetToken(mint);
+      }}
+    />
+      {targetToken && (
+        <p className="selected-token-info">
+          🎯 Target Token: <strong>{targetToken.slice(0, 6)}...{targetToken.slice(-4)}</strong>
+        </p>
+      )}
+      <ConfigPanel config={config} setConfig={setConfig} disabled={running} />
 
 
       {/* Mode Selector */}
-      <ModeSelector selected={selectedMode} onSelect={setSelectedMode} />
+      <ModeSelector selected={selectedMode} onSelect={setSelectedMode} disabled={running} />
 
+      {selectedWallets.length === 1 && selectedMode !== "rotationBot" && (
+        <p className="selected-wallet-info">
+          ✅ Using wallet: <strong>{selectedWallets[0].slice(0, 6)}...{selectedWallets[0].slice(-4)}</strong>
+        </p>
+      )}
+
+      {wallets.length > 1 && (
+      <div className="wallet-switcher">
+        <label className="text-white text-sm mr-2">🎛️ Active Wallet:</label>
+        <select
+          value={activeWallet?.publicKey.toBase58() || ""}
+          onChange={(e) =>
+            setActiveWallet(wallets.find((w) => w.publicKey.toBase58() === e.target.value))
+          }
+        >
+          {wallets.map((w) => (
+            <option key={w.publicKey.toBase58()} value={w.publicKey.toBase58()}>
+              {w.publicKey.toBase58()}
+            </option>
+          ))}
+        </select>
+      </div>
+    )}
+
+      
       {/* Start / Stop Controls */}
       <StartStopControls
         selected={selectedMode}
@@ -282,7 +387,8 @@ useEffect(() => {
       </div>
 
 
-      <div className="sticky top-0 bg-[#0e0e0e] z-50 p-2 mb-2 shadow-md">
+      {/* <div className="sticky top-0 bg-[#0e0e0e] z-50 p-2 mb-2 shadow-md"> */}
+      <div className="sticky"> 
         <label>
           🎯 Strategy Filter:
           <select
@@ -309,7 +415,7 @@ useEffect(() => {
       <div className="csv-export">
         <button
           onClick={() =>
-            window.open("http://localhost:5001/api/trades/download", "_blank")
+            window.open((`${import.meta.env.VITE_API_BASE_URL}/api/trades/download`), "_blank")
           }
         >
           📤 Export Trades CSV

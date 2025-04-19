@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import "@/styles/components/HistoryPanel.css"
 
 const HistoryPanel = () => {
   const [allTrades, setAllTrades] = useState([]);
